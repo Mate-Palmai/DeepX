@@ -1,0 +1,23 @@
+[package]
+name = "DeepX_OS"
+version = "0.0.1"
+edition = "2021"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[features]
+default = ["dev"]  # Default feature set includes "dev"
+dev = []          # Development feature
+
+[dependencies]
+limine = "0.5.0"
+bitflags = "2.4"
+linked_list_allocator = "0.10.5"
+x86_64 = "0.14.10"
+spinning_top = "0.2.5"
+
+

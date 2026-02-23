@@ -1,0 +1,15 @@
+[unstable]
+build-std = ["core", "compiler_builtins"]
+
+[build]
+# Ezt most hagyjuk üresen, vagy mutassunk pontosan a JSON-re
+target = "x86_64-userspace.json"
+
+[target.'cfg(target_arch = "x86_64")']
+rustflags = [
+    "-C", "relocation-model=static",
+    "-C", "code-model=small",
+    "-C", "target-feature=-mmx,-sse,+soft-float", # SSE tiltása, ha a JSON nem vitte át
+    "-C", "link-arg=-Tlinker.ld",
+    "-Z", "tls-model=local-exec",                 # TLS korlátozása
+]
