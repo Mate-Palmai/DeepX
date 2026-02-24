@@ -22,7 +22,7 @@ pub fn dispatch(input: &str) -> CommandResult {
     // Végrehajtjuk a parancsot és elmentjük az eredményt
     let result = match cmd {
         // system commands
-        "info" => { system::command_info(); CommandResult::None }
+        "info" => { system::command_info(args); CommandResult::None }
         "version" => { system::command_version(); CommandResult::None }
 
         "help" => { utils::command_help(); CommandResult::None }

@@ -51,3 +51,14 @@ pub fn u8_to_hex(value: u8, buffer: &mut [u8; 4]) -> &str {
     
     core::str::from_utf8(&buffer[..3]).unwrap_or("??")
 }
+
+
+pub fn format_size(bytes: u64) -> crate::alloc::string::String {
+    if bytes >= 1024 * 1024 {
+        alloc::format!("{} MB", bytes / 1024 / 1024)
+    } else if bytes >= 1024 {
+        alloc::format!("{} KB", bytes / 1024)
+    } else {
+        alloc::format!("{} B", bytes)
+    }
+}
