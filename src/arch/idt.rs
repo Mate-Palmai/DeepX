@@ -350,6 +350,6 @@ pub fn init() {
 
 pub fn print_ok() {
     unsafe {
-        crate::kernel::console::LOGGER.ok("IDT initialized (Exceptions & Systunnel Gate)");
+        crate::kernel::console::LOGGER.ok("IDT initialized");
     }
 }

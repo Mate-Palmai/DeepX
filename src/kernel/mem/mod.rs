@@ -24,33 +24,45 @@ pub fn init(memmap_request: &MemoryMapRequest) {
     heap::init(&mut mapper);
 }
 
-pub fn print_ok_memory(memmap_request: &MemoryMapRequest) {
+pub fn print_ok() {
     unsafe {
             crate::kernel::console::LOGGER.ok("Memory initialized");
+    }
+}
 
-            if let Some(stats) = get_memory_stats(memmap_request) {
-                crate::kernel::console::LOGGER.info(&format!(
-                    "RAM Usable:     ^&f{} MB",
-                    stats.usable / 1024 / 1024
-                ));
-                crate::kernel::console::LOGGER.info(&format!(
-                    "RAM Reserved:   ^&f{} MB",
-                    stats.reserved / 1024 / 1024
-                ));
-                crate::kernel::console::LOGGER.info(&format!(
-                    "Kernel Code:    ^&f{} MB",
-                    stats.kernel / 1024 / 1024
-                ));
-                crate::kernel::console::LOGGER.info(&format!(
-                    "Boot Reclaim:   ^&f{} MB",
-                    stats.boot_reclaim / 1024 / 1024
-                ));
-                crate::kernel::console::LOGGER.info(&format!(
-                    "Reserved Count: ^&f{}",
-                    stats.reserved_count
-                ));
-            } else {
-                crate::kernel::console::LOGGER.error("Memory map not found!");
-            }
+fn format_size(bytes: u64) -> alloc::string::String {
+    if bytes >= 1024 * 1024 {
+        format!("{} MB", bytes / 1024 / 1024)
+    } else if bytes >= 1024 {
+        format!("{} KB", bytes / 1024)
+    } else {
+        format!("{} B", bytes)
+    }
+}
+
+pub fn print_memory_info(memmap_request: &MemoryMapRequest) {
+    if let Some(stats) = get_memory_stats(memmap_request) {
+        crate::kernel::console::LOGGER.info(&format!(
+            "RAM Usable:     ^&f{}",
+            format_size(stats.usable)
+        ));
+        crate::kernel::console::LOGGER.info(&format!(
+            "RAM Reserved:   ^&f{}",
+            format_size(stats.reserved)
+        ));
+        crate::kernel::console::LOGGER.info(&format!(
+            "Kernel Code:    ^&f{}",
+            format_size(stats.kernel)
+        ));
+        crate::kernel::console::LOGGER.info(&format!(
+            "Boot Reclaim:   ^&f{}",
+            format_size(stats.boot_reclaim)
+        ));
+        crate::kernel::console::LOGGER.info(&format!(
+            "Reserved Count: ^&f{}",
+            stats.reserved_count
+        ));
+    } else {
+        crate::kernel::console::LOGGER.error("Memory map not found!");
     }
 }

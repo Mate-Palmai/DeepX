@@ -1,3 +1,4 @@
+# Automatically update limine.conf with the contents of the initrd directory
 CONF_FILE="iso_root/boot/limine.conf"
 INITRD_DIR="iso_root/initrd"
 
