@@ -225,6 +225,13 @@ impl<'a> ConsoleBase<'a> {
             current_row_y += line_spacing;
         };
 
+        // --- DEV BUILD INDICATOR ---
+        #[cfg(feature = "dev")]
+        {
+        next_row(self, 0xaa0a0a, 0x000000);
+        self.draw_label(b"DEV BUILD - UNSTABLE"); 
+        }
+
         // --- KERNEL VERSION ---
         next_row(self, 0xFFFFFF, 0x000000);
         self.draw_label(crate::KERNEL_VERSION.as_bytes());

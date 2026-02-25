@@ -25,6 +25,7 @@ pub fn command_info(args: &[&str]) {
             shell_log.push_str(&format!("^&9Scheduler API:   ^&f{}\n", crate::kernel::process::SCHEDULER_VERSION));
             shell_log.push_str(&format!("^&9VFS API:         ^&f{}\n", crate::kernel::fs::vfs::VFS_VERSION));
             shell_log.push_str(&format!("^&9Systunnel ABI:   ^&f{}\n", crate::kernel::systunnel::SYSTUNNEL_VERSION));
+            #[cfg(feature = "dev")]
             shell_log.push_str(&format!("^&9KernelShell API: ^&f{}\n", crate::kernel::console::kernel_shell::KERNEL_SHELL_VERSION));
             
             shell_log.push_str(separator);
