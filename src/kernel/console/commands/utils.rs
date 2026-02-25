@@ -20,7 +20,7 @@ pub fn command_help() {
 
     for (cmd, desc) in commands {
         // Balra igazított parancsnév + leírás
-        shell_log.push_str(&format!("^&9  {:<10} ^&f- {}\n", cmd, desc));
+        shell_log.push_str(&format!("^&9{:<10} ^&f- {}\n", cmd, desc));
     }
     shell_log.push_str(crate::kernel::console::commands::command_manager::SEPARATOR);
 }

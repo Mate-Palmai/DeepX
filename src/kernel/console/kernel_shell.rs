@@ -19,9 +19,7 @@ use spinning_top::Spinlock;
 // Itt tároljuk, amit éppen gépelsz, de még nem ütöttél Entert
 pub static INPUT_BUFFER: Spinlock<String> = Spinlock::new(String::new());
 
-
-pub const KERNEL_SHELL_NAME: &str = "DeepX Kernel Shell";
-pub const KERNEL_SHELL_VERSION: &str = "v0.2.4";
+pub const KERNEL_SHELL_VERSION: &str = "v0.3.2";
 
 pub struct CursorPos {
     pub x: u64,

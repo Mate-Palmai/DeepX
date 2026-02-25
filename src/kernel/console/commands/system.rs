@@ -19,10 +19,14 @@ pub fn command_info(args: &[&str]) {
         "ver" => {
             // --- VERSION INFO ---
             shell_log.push_str(separator);
-            shell_log.push_str(&format!("^&fDeepX Kernel System Versions\n"));
             shell_log.push_str(&format!("^&9Kernel:      ^&f{} v{}\n", crate::KERNEL_NAME, crate::KERNEL_VERSION));
-            shell_log.push_str(&format!("^&9VFS:         ^&f{}\n", crate::kernel::fs::vfs::VFS_VERSION));
-            shell_log.push_str(&format!("^&9Systunnel:   ^&f{}\n", crate::kernel::systunnel::SYSTUNNEL_VERSION));
+            shell_log.push_str(&format!("^&9OS: ^&f{}\n", "Unknown/Not installed"));
+            
+            shell_log.push_str(&format!("^&9Scheduler API:   ^&f{}\n", crate::kernel::process::SCHEDULER_VERSION));
+            shell_log.push_str(&format!("^&9VFS API:         ^&f{}\n", crate::kernel::fs::vfs::VFS_VERSION));
+            shell_log.push_str(&format!("^&9Systunnel ABI:   ^&f{}\n", crate::kernel::systunnel::SYSTUNNEL_VERSION));
+            shell_log.push_str(&format!("^&9KernelShell API: ^&f{}\n", crate::kernel::console::kernel_shell::KERNEL_SHELL_VERSION));
+            
             shell_log.push_str(separator);
         },
         "hw" => {
@@ -34,7 +38,18 @@ pub fn command_info(args: &[&str]) {
         "help" => {
             // --- HELP ---
             shell_log.push_str(separator);
-            shell_log.push_str("^&fInfo Help\n");
+
+            let commands = [
+                ("info",    "System summary"),
+                ("info hw", "Hardware information"),
+                ("info ver", "Version information"),
+            ];
+
+            for (cmd, desc) in commands {
+                // Balra igazított parancsnév + leírás
+                shell_log.push_str(&format!("^&9{:<10} ^&f- {}\n", cmd, desc));
+            }
+
             shell_log.push_str(separator);
         },
         _ => {

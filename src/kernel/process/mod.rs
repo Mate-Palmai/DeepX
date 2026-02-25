@@ -7,6 +7,8 @@ use alloc::format; // Szükségünk lesz a format! makróra
 
 pub mod task;
 
+pub static SCHEDULER_VERSION: &str = "v1";
+
 pub static SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
 
 pub struct Scheduler {
