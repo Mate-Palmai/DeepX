@@ -28,6 +28,8 @@ pub fn dispatch(input: &str) -> CommandResult {
         "help" => { utils::command_help(); CommandResult::None }
         "mdump" => { utils::command_mdump(args); CommandResult::None }
 
+        "reboot" => { system::command_reboot(); CommandResult::None }
+
         "clear" => {
             SHELL_LOG_BUFFER.lock().clear();
             CommandResult::ClearScreen

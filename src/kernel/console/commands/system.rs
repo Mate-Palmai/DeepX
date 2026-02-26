@@ -14,6 +14,9 @@ pub fn command_info(args: &[&str]) {
 
     let mem_stats = get_memory_stats(&crate::MEMMAP_REQUEST);
     let cpu_info = crate::arch::info::get_cpu_info();
+    let brand_str = core::str::from_utf8(&cpu_info.brand)
+        .unwrap_or("Invalid UTF-8")
+        .trim();
 
     match subcommand {
         "ver" => {
@@ -34,6 +37,23 @@ pub fn command_info(args: &[&str]) {
             // --- HARDWARE INFO ---
             shell_log.push_str(separator);
             shell_log.push_str("^&fHardware Resources\n");
+            shell_log.push_str(" ^&7CPU:\n");
+            shell_log.push_str(&format!("  ^&9Vendor:         ^&f{}\n", cpu_info.vendor));
+            shell_log.push_str(&format!("  ^&9Brand:          ^&f{}\n", brand_str));
+            shell_log.push_str(&format!("  ^&9Cores:          ^&f{}\n", cpu_info.cores));
+            shell_log.push_str(&format!("  ^&9Threads:        ^&f{}\n", cpu_info.threads));
+            shell_log.push_str(&format!("  ^&9Features:       ^&f{:?}\n", cpu_info.features));
+            shell_log.push_str(&format!("  ^&9Temp Sensor:    ^&f{}\n", cpu_info.temp_support));
+            shell_log.push_str(" ^&7MEM:\n");
+            if let Some(stats) = mem_stats {
+                shell_log.push_str(&format!("  ^&9RAM Usable:     ^&f{}\n", format_size(stats.usable)));
+                shell_log.push_str(&format!("  ^&9RAM Reserved:   ^&f{}\n", format_size(stats.reserved)));
+                shell_log.push_str(&format!("  ^&9Kernel Code:    ^&f{}\n", format_size(stats.kernel)));
+                shell_log.push_str(&format!("  ^&9Boot Reclaim:   ^&f{}\n", format_size(stats.boot_reclaim)));
+                shell_log.push_str(&format!("  ^&9Reserved Count: ^&f{}\n", stats.reserved_count));
+            } else {
+                shell_log.push_str("  ^&cError: Memory map not available\n");
+            }
             shell_log.push_str(separator);
         },
         "help" => {
@@ -67,9 +87,6 @@ pub fn command_info(args: &[&str]) {
                 shell_log.push_str(&format!("^&9Memory:  ^&f{} / {}\n", format_size(s.kernel), format_size(total)));
             }
 
-            let brand_str = core::str::from_utf8(&cpu_info.brand)
-                .unwrap_or("Invalid UTF-8")
-                .trim();
             shell_log.push_str(&format!("^&9Cpu:     ^&f{}\n", brand_str)); 
             
             shell_log.push_str(&format!("\n^&7Type '^&finfo help^&7' for more details.\n"));
@@ -81,4 +98,15 @@ pub fn command_info(args: &[&str]) {
 pub fn command_version() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     shell_log.push_str(&format!("^&9Kernel version: ^&f{} ^&f{} (^&f{})\n", crate::KERNEL_NAME, crate::KERNEL_VERSION, crate::KERNEL_MAJOR_VERSION_NAME));
+}
+
+
+
+
+pub fn command_reboot() {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    shell_log.push_str("^&eRebooting system...\n");
+    
+    // Itt hívjuk az új arch függvényt
+    crate::arch::cpu::reboot();
 }
