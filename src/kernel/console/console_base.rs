@@ -204,9 +204,9 @@ impl<'a> ConsoleBase<'a> {
     }
 
     /////////////////////////////////////////////////////////////////////
-    //// ----------------------- DEBUG PANEL ----------------------- ////
+    //// ----------------------- INFO PANEL ----------------------- ////
     /////////////////////////////////////////////////////////////////////
-    pub fn debug_panel(&mut self) {
+    pub fn info_panel(&mut self) {
         let (old_x, old_y) = (self.cursor_x, self.cursor_y);
         let (old_fg, old_bg) = (self.current_fg, self.current_bg);
         

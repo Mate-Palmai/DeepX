@@ -1,7 +1,9 @@
 use crate::kernel::console::ring_buffer::SHELL_LOG_BUFFER;
+use crate::kernel::fs::vfs::{ROOT_NODE, NodeType};
+use alloc::format;
+use alloc::vec;
 
 #[allow(unused_imports)]
-use alloc::format;
 
 pub fn command_info(args: &[&str]) {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
@@ -107,6 +109,71 @@ pub fn command_reboot() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     shell_log.push_str("^&eRebooting system...\n");
     
-    // Itt hívjuk az új arch függvényt
     crate::arch::cpu::reboot();
+}
+
+// Filesystem commands
+// --- LS: Fájlok listázása a VFS-ből ---
+pub fn command_ls() {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    let root_node = ROOT_NODE.lock();
+    
+    shell_log.push_str("^&7Directory listing for /:\n");
+
+    if let Some(root) = root_node.as_ref() {
+        match root.operations.readdir() {
+            Ok(entries) => {
+                for entry in entries {
+                    let type_str = match entry.node_type {
+                        NodeType::Directory => "^&9[DIR ]",
+                        _ => "^&f[FILE]",
+                    };
+                    shell_log.push_str(&format!("  {} {:<16} ^&7{:>8} bytes\n", type_str, entry.name, entry.size));
+                }
+            },
+            Err(_) => shell_log.push_str("^&cError: Could not read VFS root.\n"),
+        }
+    } else {
+        shell_log.push_str("^&cError: VFS not initialized.\n");
+    }
+}
+
+// --- RD: Fájl tartalmának olvasása ---
+pub fn command_rd(args: &[&str]) {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    
+    let filename = match args.get(0) {
+        Some(name) => *name,
+        None => {
+            shell_log.push_str("^&cUsage: rd <filename>\n");
+            return;
+        }
+    };
+
+    let root_node = ROOT_NODE.lock();
+    if let Some(root) = root_node.as_ref() {
+        match root.operations.finddir(filename) {
+            Ok(node) => {
+                // Biztonsági korlát: maximum 512KB beolvasása a konzolra
+                let read_limit = 512 * 1024;
+                let size_to_read = core::cmp::min(node.size as usize, read_limit);
+                let mut buffer = vec![0u8; size_to_read];
+
+                match node.operations.read(0, &mut buffer) {
+                    Ok(read_bytes) => {
+                        shell_log.push_str("^&7--- START OF FILE ---\n");
+                        match core::str::from_utf8(&buffer[..read_bytes]) {
+                            Ok(text) => shell_log.push_str(text),
+                            Err(_) => shell_log.push_str("^&8[Binary data - cannot display as text]\n"),
+                        }
+                        shell_log.push_str("\n^&7--- END OF FILE ---\n");
+                    },
+                    Err(_) => shell_log.push_str("^&cError: Failed to read file content.\n"),
+                }
+            },
+            Err(_) => shell_log.push_str(&format!("^&cError: File '{}' not found.\n", filename)),
+        }
+    } else {
+        shell_log.push_str("^&cError: VFS not initialized.\n");
+    }
 }

@@ -178,7 +178,7 @@ pub fn shell_task_entry() {
                         console.current_fg = old_fg;
                     }
 
-                    console.debug_panel();
+                    console.info_panel();
                 }
             }
         }

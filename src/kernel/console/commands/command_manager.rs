@@ -30,6 +30,9 @@ pub fn dispatch(input: &str) -> CommandResult {
 
         "reboot" => { system::command_reboot(); CommandResult::None }
 
+        "ls" => { system::command_ls(); CommandResult::None }
+        "rd" => { system::command_rd(args); CommandResult::None }
+
         "clear" => {
             SHELL_LOG_BUFFER.lock().clear();
             CommandResult::ClearScreen
