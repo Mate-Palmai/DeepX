@@ -22,7 +22,7 @@ use crate::kernel::boot::{set_phase, BootPhase};
 use crate::kernel::mem::paging::{Mapper, VirtAddr, PageTableFlags};
 
 // --- System Information ---
-pub const KERNEL_VERSION: &str = "26m02-v0.0.7_Dev9";
+pub const KERNEL_VERSION: &str = "26m02-v0.0.8_Dev1";
 pub const KERNEL_NAME: &str = "DeepX Kernel";
 pub const KERNEL_MAJOR_VERSION_NAME: &str = "Proxima Deimos";
 

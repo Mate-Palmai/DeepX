@@ -238,3 +238,23 @@ pub fn command_kill(args: &[&str]) {
         shell_log.push_str("^&cError: Invalid task ID.\n");
     }
 }
+
+
+// MISC COMMANDS
+pub fn command_panic() {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    
+    drop(shell_log); 
+
+    unsafe {
+        core::arch::asm!(
+            "mov rax, 123",
+            "xor rdx, rdx",
+            "mov rcx, 0",
+            "div rcx",
+            out("rax") _,
+            out("rdx") _,
+            out("rcx") _,
+        );
+    }
+}

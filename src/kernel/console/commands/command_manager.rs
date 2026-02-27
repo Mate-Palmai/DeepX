@@ -33,6 +33,8 @@ pub fn dispatch(input: &str) -> CommandResult {
         "tasks" => { system::command_tasks(); CommandResult::None }
         "kill" => { system::command_kill(args); CommandResult::None }
 
+        "panic" => { system::command_panic(); CommandResult::None }
+
         "clear" => {
             SHELL_LOG_BUFFER.lock().clear();
             CommandResult::ClearScreen

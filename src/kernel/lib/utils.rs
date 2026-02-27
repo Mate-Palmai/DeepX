@@ -40,8 +40,6 @@ pub fn u64_to_hex(mut num: u64, buf: &mut [u8]) -> &str {
     unsafe { core::str::from_utf8_unchecked(&buf[i..]) }
 }
 
-// kernel/lib/utils.rs vagy hol vannak az utils függvényeid
-
 pub fn u8_to_hex(value: u8, buffer: &mut [u8; 4]) -> &str {
     const HEX: &[u8; 16] = b"0123456789ABCDEF";
     buffer[0] = HEX[(value >> 4) as usize];
