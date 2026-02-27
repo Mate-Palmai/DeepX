@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/boot/phase_state.rs
@@ -8,7 +8,7 @@
 
 use core::sync::atomic::{AtomicU8, Ordering};
 
-// === Boot phases ===
+// ---Boot phases--- 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BootPhase {
@@ -25,10 +25,9 @@ pub enum BootPhase {
     Panic,
 }
 
-// === Global boot state ===
+// ---Global boot state---
 static BOOT_PHASE: AtomicU8 = AtomicU8::new(BootPhase::Early as u8);
 
-// === API ===
 pub fn set_phase(new: BootPhase) {
     
     let old = BOOT_PHASE.swap(new as u8, Ordering::SeqCst);
@@ -64,13 +63,10 @@ fn on_phase_changed(old: BootPhase, new: BootPhase) {
                 _ => "^&eUnknown Phase",
             };
             
-            // 1. Megnyitjuk a sort (újsor nélkül)
             crate::kernel::console::LOGGER.ok_nl("BootPhase changed: ^&f");
             
-            // 2. Hozzáírjuk a színes nevet
             crate::kernel::console::LOGGER.raw(name);
             
-            // 3. Manuálisan lezárjuk a sort
             crate::kernel::console::LOGGER.raw("\n");
         }
     

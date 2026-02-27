@@ -1,8 +1,9 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/console/kernel_shell.rs
+ * Description: Kernel shell implementation for interactive command execution and system information display.
  */
 
 #![cfg(feature = "dev")]
@@ -16,7 +17,6 @@ use crate::kernel::console::commands::command_manager;
 use alloc::string::String;
 use spinning_top::Spinlock;
 
-// Itt tároljuk, amit éppen gépelsz, de még nem ütöttél Entert
 pub static INPUT_BUFFER: Spinlock<String> = Spinlock::new(String::new());
 
 pub const KERNEL_SHELL_VERSION: &str = "v0.3.2";
@@ -62,7 +62,7 @@ impl KernelShell {
                 let mut input = INPUT_BUFFER.lock();
                 let command = input.clone();
                 input.clear();
-                drop(input); // Elengedjük a lakatot mielőtt írnánk
+                drop(input); 
 
                 self.write_str("\n");
                 self.execute(&command);
@@ -72,14 +72,12 @@ impl KernelShell {
             '\x08' => {
                 let mut input = INPUT_BUFFER.lock();
                 if !input.is_empty() {
-                    input.pop(); // Törlés a logikai pufferből
+                    input.pop(); 
                     drop(input);
 
                     if let Some(mut log) = SHELL_LOG_BUFFER.try_lock() {
-                        log.pop(); // Törlés a RingBufferből (amit a videón kértél)
+                        log.pop();
                     }
-                    // Itt NEM kell self.write_str("\x08"), mert a render_buffer 
-                    // a köv. körben már a rövidített szöveget rajzolja ki!
                 }
             },
             _ => {
@@ -101,17 +99,11 @@ impl KernelShell {
         let trimmed = cmd.trim();
         if trimmed.is_empty() { return; }
         
-        // Meghívjuk a régi parancskezelőt
         let result = command_manager::dispatch(trimmed);
 
 
-
-        // Kezeljük a speciális visszatérési értékeket (pl. ClearScreen)
         match result {
             command_manager::CommandResult::ClearScreen => {
-                // Ha a CommandResult::ClearScreen jön vissza, 
-                // kényszeríthetsz egy azonnali képernyőtörlést is,
-                // bár a log.clear() a következő renderelésnél már hatni fog.
                 if let Some(mut console_lock) = CONSOLE.try_lock() {
                     if let Some(console) = console_lock.as_mut() {
                         console.clear();
@@ -146,33 +138,28 @@ pub fn shell_task_entry() {
             if let Some(mut console_lock) = CONSOLE.try_lock() {
                 if let Some(console) = console_lock.as_mut() {
                     
-                    // 1. Kirajzoljuk a szöveget (a draw_char-od már törli a hátteret a betűk alatt)
                     if let Some(log) = SHELL_LOG_BUFFER.try_lock() {
                         console.render_buffer(&log);
                     }
 
                     unsafe {
-                        // 2. TÖRLÉS: Lefestjük a kurzor ELŐZŐ helyét feketével
                         let old_fg = console.current_fg;
                         let saved_x = console.cursor_x;
                         let saved_y = console.cursor_y;
 
                         console.cursor_x = LAST_CURSOR_POS.x;
                         console.cursor_y = LAST_CURSOR_POS.y;
-                        console.current_fg = 0x000000; // Fekete
-                        console.draw_char(b' ');       // Lefestjük szóközzel
+                        console.current_fg = 0x000000; 
+                        console.draw_char(b' ');      
 
-                        // 3. RAJZOLÁS: Kirajzoljuk az ÚJ kurzort az aktuális helyre
                         console.cursor_x = saved_x;
                         console.cursor_y = saved_y;
                         console.current_fg = 0xFFFFFF; 
                         console.draw_char(b'_');
 
-                        // 4. MENTÉS: Eltároljuk a mostani helyet a következő körnek
                         LAST_CURSOR_POS.x = saved_x;
                         LAST_CURSOR_POS.y = saved_y;
 
-                        // Visszaállítjuk a kurzort a debug_panelnek
                         console.cursor_x = saved_x;
                         console.cursor_y = saved_y;
                         console.current_fg = old_fg;

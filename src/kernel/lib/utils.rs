@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/lib/utils.rs

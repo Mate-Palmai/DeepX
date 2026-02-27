@@ -1,4 +1,10 @@
-// src/kernel/lib/debug.rs
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/lib/debug.rs
+ * Description: Debugging utilities for kernel.
+ */
 
 use crate::kernel::drivers::input;
 

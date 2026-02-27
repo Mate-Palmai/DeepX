@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/arch/pic.rs
@@ -95,8 +95,6 @@ impl ChainedPics {
         print_pic_disabled();
     }
     
-
-    /// Notify end of interrupt
     pub unsafe fn notify_end_of_interrupt(&mut self, int_id: u8) {
         if int_id >= self.offset_slave {
             self.slave.command.write(PIC_EOI);

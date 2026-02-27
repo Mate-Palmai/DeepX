@@ -4,7 +4,6 @@
 
 use core::arch::naked_asm;
 
-// os/os_discovery.rs
 
 #[no_mangle]
 #[unsafe(naked)]
@@ -14,8 +13,8 @@ pub extern "C" fn _start() -> ! {
 
     unsafe {
         naked_asm!(
-            "mov rsp, 0x501000",   // Stack beállítása
-            "jmp {logic}",         // CALL helyett JMP, így nincs visszatérési cím mizéria
+            "mov rsp, 0x501000", 
+            "jmp {logic}", 
             logic = sym main_logic,
         );
     }
@@ -25,10 +24,8 @@ pub extern "C" fn _start() -> ! {
 
 #[inline(never)]
 fn main_logic() -> ! {
-    // 1. Logolás
     syscall_log("Searching for os...");
     
-    // 2. Rövidített várakozás a biztonság kedvéért
     for _ in 0..1_000_000 { 
         unsafe { core::arch::asm!("pause"); } 
     }
@@ -48,7 +45,7 @@ fn syscall_log(msg: &str) {
     unsafe {
         core::arch::asm!(
             "int 0x80",
-            in("rax") 0,               // TunnelID::Log
+            in("rax") 0,        
             in("rdi") msg.as_ptr() as u64,
             in("rsi") msg.len() as u64,
             options(nostack)

@@ -1,27 +1,32 @@
-// src/kernel/process/task.rs
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/process/task.rs
+ * Description: Task management and context switching logic.
+ */
 
 use alloc::alloc::handle_alloc_error;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskState {
-    Ready,      // Futásra kész
-    Running,    // Éppen fut
-    Blocked,    // Várakozik
+    Ready,     
+    Running,  
+    Blocked,  
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TaskContext {
-    // Callee-saved regiszterek, amiket mentenünk kell
     r15: u64, r14: u64, r13: u64, r12: u64,
     rbp: u64, rbx: u64,
-    rip: u64, // Instruction pointer (hová térünk vissza)
+    rip: u64, 
 }
 
 pub struct Task {
     pub id: u64,
-    pub stack_pointer: u64, // RSP értéke a váltáskor
+    pub stack_pointer: u64, 
     pub state: TaskState,
     pub stack_bottom: u64,
     pub stack_top: u64,
@@ -72,9 +77,9 @@ impl Task {
     pub fn new_kernel_task() -> Self {
         Self {
             id: 0,
-            stack_pointer: 0, // Ezt a context_switch fogja kitölteni az első mentésnél
+            stack_pointer: 0, 
             state: TaskState::Running,
-            stack_bottom: 0, // A fő stack címeit a Limine/Bootloader már beállította
+            stack_bottom: 0,
             stack_top: 0,
         }
     }
@@ -88,15 +93,9 @@ impl Task {
         let stack_top = stack_ptr as u64 + stack_size as u64;
         let mut sp = stack_top;
 
-        // --- Ez a rész kritikus ---
-        // A context_switch 'ret'-tel indul, de az új tasknak 
-        // engedélyeznie kell a megszakításokat.
-        
-        // 1. RIP (visszatérési cím)
         sp -= 8;
         unsafe { *(sp as *mut u64) = entry_point; }
 
-        // 2. Regiszterek (rbx, rbp, r12, r13, r14, r15)
         for _ in 0..6 {
             sp -= 8;
             unsafe { *(sp as *mut u64) = 0; }

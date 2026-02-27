@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/boot/welcome.rs
@@ -18,7 +18,4 @@ pub fn show_welcome<'a, 'b>() {
 
     crate::kernel::console::LOGGER.raw(LOGO);
     crate::kernel::console::LOGGER.raw("\n\n");
-
-    // let mut logger = Logger::new(console);
-    // logger.info("Welcome to DeepX OS!");
 }

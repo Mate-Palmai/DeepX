@@ -13,7 +13,6 @@ use alloc::format;
 pub fn print_cpu_info() {
     let cpu_info = crate::arch::info::get_cpu_info();
     
-    // A brand bájtokból stringet csinálunk
     let brand_str = core::str::from_utf8(&cpu_info.brand)
         .unwrap_or("Invalid UTF-8")
         .trim();

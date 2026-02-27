@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX  Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/drivers/keyboard.rs
@@ -14,7 +14,7 @@ const KEYBOARD_PORT: u16 = 0x60;
 
 pub struct Keyboard;
 
-// RAW SCANCODE QUEUE (nem char!)
+// RAW SCANCODE QUEUE
 pub static KEY_QUEUE: Spinlock<VecDeque<u8>> = Spinlock::new(VecDeque::new());
 
 impl Keyboard {

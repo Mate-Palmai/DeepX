@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/arch/idt.rs
@@ -10,7 +10,6 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 use crate::kernel::lib::utils::{u64_to_hex, u64_to_str};
 
-// Alacsony szintű IDT struktúrák
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct IdtEntry {
@@ -40,8 +39,8 @@ impl IdtEntry {
         self.offset_low = handler as u16;
         self.offset_mid = (handler >> 16) as u16;
         self.offset_high = (handler >> 32) as u32;
-        self.selector = 8; // Kernel Code Segment
-        self.flags = 0x8E; // Present, Ring 0, Interrupt Gate
+        self.selector = 8;
+        self.flags = 0x8E;
         self.ist = 0;
     }
 
@@ -56,7 +55,6 @@ struct IdtPtr {
     base: u64,
 }
 
-// A CPU állapota kivételkor (extern "x86-interrupt" ABI szerinti sorrend)
 #[repr(C)]
 #[derive(Debug)]
 pub struct InterruptStackFrame {
@@ -263,18 +261,11 @@ static mut TIMER_TICKS: u64 = 0;
 
 pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     unsafe {
-        // 1. Tick növelése azonnal
         TIMER_TICKS += 1;
 
-        // 2. EOI KÜLDÉSE AZONNAL (Még a scheduler előtt!)
-        // Ezzel mondjuk meg az APIC-nak, hogy jöhet a következő tick, 
-        // függetlenül attól, hogy váltunk-e taskot.
         let lapic_eoi_ptr = 0xFEE0_00B0 as *mut u32;
         core::ptr::write_volatile(lapic_eoi_ptr, 0);
 
-        // 3. CSAK EZUTÁN jöhet a scheduler
-        // Ha a schedule() átvált egy másik taskra, az IRETQ ott fog lefutni,
-        // de az APIC már megkapta az EOI-t, így a timer ketyeg tovább.
         if let Some(mut sched) = crate::kernel::process::SCHEDULER.try_lock() {
             sched.schedule();
         }

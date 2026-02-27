@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/mem/info.rs
@@ -8,7 +8,6 @@
 
 use limine::request::MemoryMapRequest;
 
-/// Memory stat struct, a boot info visszaadásához
 #[derive(Debug, Copy, Clone)]
 pub struct MemoryStats {
     pub usable: u64,
@@ -18,7 +17,6 @@ pub struct MemoryStats {
     pub reserved_count: u64,
 }
 
-/// Visszaadja a memory statokat, **nem ír semmit**.
 pub fn get_memory_stats(memmap_request: &MemoryMapRequest) -> Option<MemoryStats> {
     if let Some(memmap) = memmap_request.get_response() {
         let mut usable: u64 = 0;

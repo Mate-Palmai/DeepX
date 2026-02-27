@@ -1,3 +1,11 @@
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/mem/mod.rs
+ * Description: Memory management module for kernel.
+ */
+
 
 pub mod info;
 pub mod pmm;
@@ -13,14 +21,11 @@ use limine::request::MemoryMapRequest;
 use crate::kernel::mem::info::get_memory_stats;
 
 pub fn init(memmap_request: &MemoryMapRequest) {
-    // 1. PMM inicializálása (most már átadjuk a memmap-et)
     pmm::init(memmap_request);
     pmm::print_ok();
 
-    // 2. Mapper létrehozása
     let mut mapper = unsafe { MemoryMapper::new() };
 
-    // 3. Heap inicializálása
     heap::init(&mut mapper);
 }
 

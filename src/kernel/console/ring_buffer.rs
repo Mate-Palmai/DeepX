@@ -1,6 +1,9 @@
 /*
- * DeepX OS Project
- * Ring buffer for kernel logging
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/console/ring_buffer.rs
+ * Description: Ring buffer implementation for kernel logging.
  */
 
 use spinning_top::Spinlock;
@@ -8,19 +11,10 @@ use core::fmt;
 
 pub const LOG_BUFFER_SIZE: usize = 16 * 1024;
 
-/// Rendszer logok (SafeConsole számára)
 pub static LOG_BUFFER: Spinlock<RingBuffer> = Spinlock::new(RingBuffer::new());
 
-/// TEST ONLY FOR THE NEW CONSOLE_BASE.RS FILE
-/// TEST ONLY FOR THE NEW CONSOLE_BASE.RS FILE
-/// TEST ONLY FOR THE NEW CONSOLE_BASE.RS FILE
-/// TEST ONLY FOR THE NEW CONSOLE_BASE.RS FILE
-pub static LOG_BUFFER_TEST: Spinlock<RingBuffer> = Spinlock::new(RingBuffer::new());
-
-/// Shell kimenetek (KernelShell számára)
 pub static SHELL_LOG_BUFFER: Spinlock<RingBuffer> = Spinlock::new(RingBuffer::new());
 
-/// Statikus, heapless log buffer
 pub struct RingBuffer {
     pub buf: [u8; LOG_BUFFER_SIZE],
     pub write_pos: usize,
@@ -36,7 +30,6 @@ impl fmt::Write for RingBuffer {
 }
 
 impl RingBuffer {
-    /// Const konstruktor, heap nélkül
     pub const fn new() -> Self {
         Self {
             buf: [0; LOG_BUFFER_SIZE],
@@ -50,7 +43,6 @@ impl RingBuffer {
     pub fn get_pos(&self) -> usize { self.write_pos }
     pub fn get_buf(&self) -> &[u8] { &self.buf }
 
-    /// Bájtok beszúrása
     pub fn push_bytes(&mut self, data: &[u8]) {
         for &b in data {
             self.buf[self.write_pos] = b;
@@ -63,12 +55,10 @@ impl RingBuffer {
         }
     }
 
-    /// Szöveg beszúrása
     pub fn push_str(&mut self, s: &str) {
         self.push_bytes(s.as_bytes());
     }
 
-    /// Kiolvasás egy slice-ba
     pub fn read_all(&self, out: &mut [u8]) -> usize {
         let mut idx = 0;
 
@@ -94,30 +84,22 @@ impl RingBuffer {
     pub fn pop(&mut self) {
         if self.write_pos > 0 {
             self.write_pos -= 1;
-            self.buf[self.write_pos] = 0; // Nullázzuk a helyét
+            self.buf[self.write_pos] = 0; 
         } else if self.wrapped {
-            // Ha éppen a puffer elején vagyunk, de már körbeért (wrapped), 
-            // akkor az utolsó indexre ugrunk vissza
             self.write_pos = LOG_BUFFER_SIZE - 1;
             self.buf[self.write_pos] = 0;
-            // Opcionális: ha nagyon precízek akarunk lenni, 
-            // itt a wrapped-et hamisra állíthatnánk, ha kiürül a puffer, 
-            // de egy karakter törlésénél ez nem szükséges.
         }
     }
 
     pub fn clear(&mut self) {
         self.write_pos = 0;
         self.wrapped = false;
-        // Opcionális: a memória lenullázása (biztonság kedvéért)
         for i in 0..LOG_BUFFER_SIZE {
             self.buf[i] = 0;
         }
     }
 }
 
-
-/// Heapless helper: formázott számok írása (itoa helyett)
 pub fn push_u32(buf: &mut RingBuffer, mut n: u32) {
     let mut digits = [0u8; 10];
     let mut i = 0;
@@ -133,13 +115,11 @@ pub fn push_u32(buf: &mut RingBuffer, mut n: u32) {
         i += 1;
     }
 
-    // fordítva írás
     for j in (0..i).rev() {
         buf.push_bytes(&[digits[j]]);
     }
 }
 
-/// Heapless helper: push line (newline hozzáadva)
 pub fn push_line(buf: &mut RingBuffer, s: &str) {
     buf.push_str(s);
     buf.push_bytes(b"\n");

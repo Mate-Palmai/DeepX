@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/drivers/rtc.rs
@@ -8,7 +8,7 @@
 
 use core::arch::asm;
 
-// CMOS portok
+// CMOS ports
 const CMOS_ADDR: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
 

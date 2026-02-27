@@ -5,7 +5,6 @@ pub mod display_manager;
 pub mod console_base;
 pub mod commands;
 
-// 1. Csak dev módban létezik a modul
 #[cfg(feature = "dev")]
 pub mod kernel_shell;
 
@@ -16,7 +15,6 @@ use spinning_top::Spinlock;
 use crate::kernel::console::console_base::ConsoleBase;
 pub use safe_console::SafeConsole;
 
-// 2. A use-t is védeni kell!
 #[cfg(feature = "dev")]
 pub use kernel_shell::KernelShell;
 
@@ -24,7 +22,7 @@ pub use kernel_shell::KernelShell;
 pub enum DisplayMode {
     RecoveryConsole,
     SafeConsole,
-    #[cfg(feature = "dev")] // Az enum opciót is elrejtheted
+    #[cfg(feature = "dev")]
     KernelShell,
 }
 
@@ -36,6 +34,6 @@ pub static CONSOLE: Spinlock<Option<ConsoleBase>> = Spinlock::new(None);
 // SAFE_CONSOLE
 pub static SAFE_CONSOLE: SafeConsole = SafeConsole::new();
 
-// KERNEL_SHELL - Csak akkor létezik a statikus változó, ha dev módban vagyunk
+// KERNEL_SHELL
 #[cfg(feature = "dev")]
 pub static KERNEL_SHELL: Spinlock<Option<KernelShell>> = Spinlock::new(None);

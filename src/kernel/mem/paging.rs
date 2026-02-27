@@ -1,3 +1,11 @@
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/mem/paging.rs
+ * Description: Kernel paging and virtual memory management.
+ */
+
 use bitflags::bitflags;
 use crate::kernel::mem::pmm;
 
@@ -13,7 +21,7 @@ bitflags! {
         const NO_CACHE = 1 << 4;
         const ACCESSED = 1 << 5;
         const DIRTY = 1 << 6;
-        const HUGE_PAGE = 1 << 7;       // <--- EZ OKOZZA A GONDOT
+        const HUGE_PAGE = 1 << 7;
         const GLOBAL = 1 << 8;
         const NO_EXECUTE = 1 << 63;
     }
@@ -96,7 +104,6 @@ impl Mapper {
     }
 
     fn get_or_create_table_static(entry: &mut PageTableEntry) -> &'static mut PageTable {
-        // HA HUGE_PAGE van itt, kényszerítsük az átalakítást rendes táblává!
         if entry.flags().contains(PageTableFlags::PRESENT) && !entry.flags().contains(PageTableFlags::HUGE_PAGE) {
             if !entry.flags().contains(PageTableFlags::USER_ACCESSIBLE) {
                 let new_flags = entry.flags() | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
@@ -104,12 +111,10 @@ impl Mapper {
             }
             unsafe { &mut *((entry.addr() + HHDM_OFFSET) as *mut PageTable) }
         } else {
-            // Új táblát foglalunk (akkor is, ha korábban HUGE_PAGE volt ott)
             let new_frame = pmm::alloc_frame().expect("PMM Exhausted");
             let new_table_virt = (new_frame + HHDM_OFFSET) as *mut PageTable;
             unsafe {
                 (*new_table_virt).zero();
-                // Fontos: a HUGE_PAGE bit itt biztosan nincs beállítva
                 entry.set_addr(new_frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE);
                 &mut *new_table_virt
             }
@@ -167,7 +172,6 @@ impl Mapper {
     log.ok(&format!("      L1 Index: {} | Phys Frame: 0x{:X} | Flags: {:?}", 
         v.p1_index(), p1_entry.addr(), p1_entry.flags()));
 
-    // Biztonsági ellenőrzés Ring 3-hoz
     if !p1_entry.flags().contains(PageTableFlags::USER_ACCESSIBLE) {
         log.error("      CRITICAL: USER_ACCESSIBLE bit is MISSING at L1!");
     }

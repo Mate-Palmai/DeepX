@@ -1,5 +1,9 @@
 /*
- * DeepX OS Project - Architecture Specific Info
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/arch/info.rs
+ * Description: CPU information gathering.
  */
 
 #[derive(Debug, Clone)]
@@ -17,14 +21,13 @@ pub struct CpuFeatures {
     pub sse: bool,
     pub sse2: bool,
     pub avx: bool,
-    pub nx: bool,      // No-Execute bit (biztonság)
-    pub htt: bool,     // Hyper-Threading Technology
+    pub nx: bool,      
+    pub htt: bool,     
 }
 
 pub fn get_cpu_info() -> CpuInfo {
     let mut brand = [0u8; 48];
     
-    // 1. Vendor lekérése
     let res_0 = unsafe { core::arch::x86_64::__cpuid(0) };
     let vendor = match (res_0.ebx, res_0.edx, res_0.ecx) {
         (0x756e6547, 0x49656e69, 0x6c65746e) => "GenuineIntel",
@@ -32,7 +35,6 @@ pub fn get_cpu_info() -> CpuInfo {
         _ => "Unknown",
     };
 
-    // 2. Brand lekérése
     for i in 0..3 {
         let res = unsafe { core::arch::x86_64::__cpuid(0x80000002 + i) };
         let offset = i as usize * 16;
@@ -42,11 +44,9 @@ pub fn get_cpu_info() -> CpuInfo {
         brand[offset+12..offset+16].copy_from_slice(&res.edx.to_le_bytes());
     }
 
-    // 3. Alapértelmezett értékek a magoknak
     let mut cores = 1;
     let mut threads = 1;
 
-    // Logikai processzorok száma (Hyper-Threading esetén ez a szálak száma)
     let res_1 = unsafe { core::arch::x86_64::__cpuid(1) };
     let logical_cpus = (res_1.ebx >> 16) & 0xFF;
 
@@ -59,11 +59,9 @@ pub fn get_cpu_info() -> CpuInfo {
         cores = ((res_4.eax >> 26) & 0x3F) + 1;
         threads = logical_cpus;
     } else {
-        // Ha ismeretlen, legalább a logikai számot próbáljuk megtippelni
         threads = logical_cpus;
     }
 
-    // 4. Feature-ök
     let res_1 = unsafe { core::arch::x86_64::__cpuid(1) };
     let res_ext = unsafe { core::arch::x86_64::__cpuid(0x80000001) };
     

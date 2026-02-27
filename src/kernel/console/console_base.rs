@@ -1,7 +1,17 @@
-/* /src/kernel/console/console_base.rs */
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/console/console_base.rs
+ * Description: Base console implementation for rendering text and managing the framebuffer in the kernel.
+ * This is the core rendering logic for the console, handling text output, colors, and basic formatting. It is designed to be used by higher-level console implementations like the SafeConsole.
+ * The ConsoleBase directly interacts with the framebuffer to draw characters and manage the cursor position. It also includes an info panel that displays system information such as time, uptime, and last key pressed.
+ * This module is critical for the kernel's logging and display functionality, and is used by the SafeConsole to render log messages and system information in a visually appealing way.
+ */
+
+
 use limine::framebuffer::Framebuffer;
 
-// 8x8-as font (bár a tömb 2048, a logikád 8 bájtos indexelést használ)
 const FONT: &[u8; 2048] = include_bytes!("../../font.bin");
 
 static mut INTERNAL_DEBUG_TICK: u64 = 0;
@@ -12,7 +22,7 @@ pub struct ConsoleBase<'a> {
     pub cursor_y: u64,
     pub current_fg: u32,
     pub current_bg: u32,
-    pub line_height: u64, // Ez tárolja az Y irányú ugrást
+    pub line_height: u64, 
 }
 
 impl<'a> ConsoleBase<'a> {
@@ -23,7 +33,7 @@ impl<'a> ConsoleBase<'a> {
             cursor_y: 20,
             current_fg: 0xFFFFFF,
             current_bg: 0x000000,
-            line_height: 9, // Alapértelmezett: 8 pixel betű + 1 pixel szünet
+            line_height: 9,
         }
     }
 
@@ -57,7 +67,6 @@ impl<'a> ConsoleBase<'a> {
     fn render_bytes(&mut self, data: &[u8]) {
         let mut i = 0;
         while i < data.len() {
-            // Minecraft színek kezelése
             if data[i] == b'^' && i + 2 < data.len() && data[i + 1] == b'&' {
                 self.current_fg = self.parse_color(data[i + 2]);
                 i += 3;
@@ -65,7 +74,6 @@ impl<'a> ConsoleBase<'a> {
             }
 
             let b = data[i];
-            // Ha a pufferben 0-ás bájt van (üres rész), ne rajzoljunk semmit
             if b == 0 { 
                 i += 1; 
                 continue; 
@@ -74,10 +82,9 @@ impl<'a> ConsoleBase<'a> {
             match b {
                 b'\n' => self.newline(),
                 b'\r' => self.cursor_x = 20,
-                0x08 => { // <--- EZT IDE TEDD (Backspace)
+                0x08 => {
                     if self.cursor_x > 20 {
                         self.cursor_x -= 8;
-                        // Letöröljük a karaktert (szóközzel)
                         let old_fg = self.current_fg;
                         self.current_fg = self.current_bg;
                         self.draw_char(b' '); 
@@ -85,10 +92,8 @@ impl<'a> ConsoleBase<'a> {
                     }
                 },
                 32..=126 => {
-                    // ... (Rajzoló kód marad) ...
                     self.draw_char(b);
                     self.cursor_x += 8;
-                    // ... (Automata sorváltás marad) ...
                 }
                 _ => {}
             }
@@ -106,15 +111,12 @@ impl<'a> ConsoleBase<'a> {
         let fb_ptr = self.fb.addr() as *mut u32;
         let pitch = (self.fb.pitch() / 4) as usize;
 
-        // A rajzolási ciklus hossza igazodik a sormagassághoz, 
-        // de nem rajzolunk többet, mint amit a font bír (max 10 sor)
         let rows_to_draw = if self.line_height < 10 { self.line_height } else { 10 };
 
         for row in 0..rows_to_draw {
             let curr_y = self.cursor_y + row;
             if curr_y >= self.fb.height() { break; }
 
-            // Csak az első 8 sorban van adat a fontfájlból
             let row_data = if row < 8 { FONT[index * 8 + row as usize] } else { 0 };
             
             let row_addr = unsafe { fb_ptr.add(curr_y as usize * pitch + self.cursor_x as usize) };
@@ -132,7 +134,7 @@ impl<'a> ConsoleBase<'a> {
         }
     }
 
-    //TODO: Nem a console_base-ben kell torolni a sorokat hanel a ringbufferbol.
+    // TODO: Delete the line in the ringbuffer not just clear.
     pub fn scroll(&mut self) {
         let fb_ptr = self.fb.addr() as *mut u32;
         let pitch = (self.fb.pitch() / 4) as usize;
@@ -141,16 +143,12 @@ impl<'a> ConsoleBase<'a> {
         let line_h = self.line_height as usize;
 
         unsafe {
-            // 1. Pixelek másolása felfelé
-            // A (line_h) sortól kezdve mindent az (0) sorba másolunk
             for y in line_h..height {
                 let src_row = fb_ptr.add(y * pitch);
                 let dst_row = fb_ptr.add((y - line_h) * pitch);
-                // Memória másolása soronként
                 core::ptr::copy_nonoverlapping(src_row, dst_row, width);
             }
 
-            // 2. Az utolsó sor kitakarítása a háttérszínnel
             for y in (height - line_h)..height {
                 let row_addr = fb_ptr.add(y * pitch);
                 for x in 0..width {
@@ -158,7 +156,6 @@ impl<'a> ConsoleBase<'a> {
                 }
             }
         }
-        // Visszahelyezzük a kurzort az utolsó sor elejére
         self.cursor_y -= self.line_height;
     }
 
@@ -167,7 +164,6 @@ impl<'a> ConsoleBase<'a> {
         self.cursor_x = 20;
         self.cursor_y += self.line_height;
         
-        // Ha túlmentünk az alján, görgetünk
         if self.cursor_y + self.line_height >= self.fb.height() - 10 {
             self.scroll();
         }
@@ -188,7 +184,6 @@ impl<'a> ConsoleBase<'a> {
             }
         }
         
-        // Kezdőpozíció visszaállítása
         self.cursor_x = 20;
         self.cursor_y = 20;
     }
@@ -216,7 +211,6 @@ impl<'a> ConsoleBase<'a> {
         let line_spacing = 16;
         let label_width = 48;
 
-        // Kibővített segédfüggvény: pozíció + színek
         let mut next_row = |base: &mut ConsoleBase, fg: u32, bg: u32| {
             base.cursor_x = start_x;
             base.cursor_y = current_row_y;
@@ -289,7 +283,6 @@ impl<'a> ConsoleBase<'a> {
         unsafe {
             let scancode = crate::arch::idt::LAST_SCANCODE;
             if scancode != 0 && scancode < 0x80 {
-                // Hexa kiírás (pl. 0x24)
                 self.draw_label(b"0x");
                 let mut hex_buf = [0u8; 2];
                 let hex_chars = b"0123456789ABCDEF";
@@ -297,13 +290,12 @@ impl<'a> ConsoleBase<'a> {
                 hex_buf[1] = hex_chars[(scancode & 0x0F) as usize];
                 self.draw_label(&hex_buf);
 
-                // Karakter kiírás fixálása
                 if let Some(c) = crate::kernel::drivers::keyboard::Keyboard::scancode_to_char(scancode) {
-                    self.draw_label(b" ("); // Ez lépteti a kurzort
+                    self.draw_label(b" ("); 
                     self.draw_char(c as u8);
-                    self.cursor_x += 8;      // <--- EZ HIÁNYZOTT: léptetjük a betű után
+                    self.cursor_x += 8;     
                     self.draw_char(b')');
-                    self.cursor_x += 8;      // Biztonság kedvéért itt is
+                    self.cursor_x += 8; 
                 } else {
                     self.draw_label(b" (?)");
                 }
@@ -340,7 +332,7 @@ impl<'a> ConsoleBase<'a> {
         self.draw_char((value % 10) + b'0');
         self.cursor_x += 8;
     }
-    // Segédfüggvények a tisztább kódért (ha a ConsoleBase-ben vagy):
+
     fn draw_label(&mut self, label: &[u8]) {
         for &c in label {
             self.draw_char(c);

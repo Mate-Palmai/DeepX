@@ -1,10 +1,16 @@
-/* /src/kernel/process/mod.rs */
+/*
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/process/mod.rs
+ * Description: Process and task management module.
+ */
 
 use crate::kernel::process::task::Task;
 use spinning_top::Spinlock;
 use alloc::collections::VecDeque;
 use crate::kernel::process::task::TaskState;
-use alloc::format; // Szükségünk lesz a format! makróra
+use alloc::format;
 
 pub mod task;
 
@@ -38,7 +44,6 @@ impl Scheduler {
     }
 
     pub fn remove_task(&mut self, id: u64) -> bool {
-        // Nem engedjük megölni a Kernelt (0) vagy a Shellt (2) - öngyilkosság ellen
         if id == 0 || id == 2 {
             return false;
         }
@@ -53,7 +58,6 @@ impl Scheduler {
 
         if let Some(idx) = target_idx {
             self.tasks.remove(idx);
-            // Ha a törölt taszk az aktuális előtt volt, korrigáljuk az indexet
             if idx <= self.current_task_index && self.current_task_index > 0 {
                 self.current_task_index -= 1;
             }
@@ -67,14 +71,11 @@ impl Scheduler {
     if self.tasks.len() < 2 { return; }
 
     let old_idx = self.current_task_index;
-    // 1. A régi taszkot visszatesszük Ready állapotba
     self.tasks[old_idx].state = TaskState::Ready;
 
-    // 2. Index léptetés
     let new_idx = (old_idx + 1) % self.tasks.len();
     self.current_task_index = new_idx;
     
-    // 3. Az új taszkot átállítjuk Running-ra
     self.tasks[new_idx].state = TaskState::Running;
 
     let old_rsp_ptr = &mut self.tasks[old_idx].stack_pointer as *mut u64;

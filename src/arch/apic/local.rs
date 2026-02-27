@@ -18,7 +18,6 @@ impl LocalApic {
     }
 
     pub unsafe fn init(&self) {
-        // Spurious Interrupt Vector Register + APIC Enable (bit 8)
         self.write(0xF0, self.read(0xF0) | 0x100 | 0xFF);
 
         crate::kernel::console::LOGGER.ok("Local APIC initialized");

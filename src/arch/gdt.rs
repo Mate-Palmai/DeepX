@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/arch/gdt.rs
@@ -18,28 +18,15 @@ struct GdtPtr {
 static mut TSS: TaskStateSegment = TaskStateSegment::new();
 static mut GDT: [u64; 8] = [0; 8];
 
-pub fn init(kernel_stack: u64) { // <--- Most már vár egy paramétert!
+pub fn init(kernel_stack: u64) {
     unsafe {
-        // Szegmensek (null, kcode, kdata, udata, ucode)
+       
         GDT[0] = 0; // Null
-        // // GDT[1]: Kernel Code (0x08)
-        // GDT[1] = (1 << 44) | (1 << 47) | (1 << 41) | (1 << 43) | (1 << 53); 
-        // // GDT[2]: Kernel Data (0x10)
-        // GDT[2] = (1 << 44) | (1 << 47) | (1 << 41) | (1 << 42); // + Writable bit!
-        
-        // // GDT[3]: User Code (0x1B szelektor)
-        // // Flagek: User(44), Present(47), Read/Write(41), DPL 3(45,46), Exec(43), LongMode(53)
-        // GDT[3] = (1 << 44) | (1 << 47) | (1 << 41) | (3 << 45) | (1 << 43) | (1 << 53);
 
-        // // GDT[4]: User Data (0x23 szelektor)
-        // // Flagek: User(44), Present(47), Read/Write(41), Writable(42), DPL 3(45,46)
-        // GDT[4] = (1 << 44) | (1 << 47) | (1 << 41) | (1 << 42) | (3 << 45);
-
-        // GDT[1]: Kernel Code (0x08) - Próbáljuk a biztonságosabb maszkot
+        // GDT[1]: Kernel Code (0x08)
         GDT[1] = 0x00AF9A000000FFFF; 
 
-        // GDT[2]: Kernel Data (0x10) - EZ A KRITIKUS
-        // A maszk: Present(47), Read/Write(41), Data/Code(44), Writable(42)
+        // GDT[2]: Kernel Data (0x10)
         GDT[2] = 0x00CF92000000FFFF; 
         
         // GDT[3]: User Code (0x1B)
@@ -48,15 +35,12 @@ pub fn init(kernel_stack: u64) { // <--- Most már vár egy paramétert!
         // GDT[4]: User Data (0x23)
         GDT[4] = 0x00CFF2000000FFFF;
 
-        // --- TSS FRISSÍTÉSE A VALÓDI STACKEL ---
-        // Amikor Ring 3-ból hiba/syscall jön, ide vált a CPU
         TSS.privilege_stack_table[0] = kernel_stack;
         TSS.interrupt_stack_table[0] = kernel_stack;
 
         let tss_addr = core::ptr::addr_of!(TSS) as u64;
         let tss_limit = (size_of::<TaskStateSegment>() - 1) as u64;
 
-        // TSS Descriptor felépítése (GDT[5] és [6])
         let mut low = 0u64;
         low |= tss_limit & 0xFFFF;
         low |= (tss_addr & 0xFFFFFF) << 16;
@@ -72,7 +56,6 @@ pub fn init(kernel_stack: u64) { // <--- Most már vár egy paramétert!
             base: core::ptr::addr_of!(GDT) as u64,
         };
 
-        // GDT és TSS aktiválása
         core::arch::asm!(
             "lgdt [{0}]",
             "mov ax, 0x10",

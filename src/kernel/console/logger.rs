@@ -1,11 +1,14 @@
 /*
- * DeepX OS Project
- * Kernel logger (no rendering)
+ * DeepX Project
+ * Copyright (C) 2024-2026 - Máté Pálmai
+ *
+ * File: /src/kernel/console/logger.rs
+ * Description: Logger implementation for kernel, providing various log levels and formatting.
  */
 
 use crate::kernel::console::ring_buffer::LOG_BUFFER;
 use crate::kernel::drivers::rtc::read_rtc_time;
-use crate::kernel::console::CONSOLE; // Az új globális Spinlock-olt konzol
+use crate::kernel::console::CONSOLE; 
 use crate::kernel::console::DisplayMode;
 
 pub struct Logger;
@@ -18,13 +21,11 @@ impl Logger {
     fn log_internal(&self, level: &str, color: &str, msg: &str, with_prefix: bool, newline: bool) {
         let (h, m, s) = if with_prefix { read_rtc_time() } else { (0, 0, 0) };
 
-        // 1. LÉPÉS: Írás a RingBufferbe
         {
             let mut log = LOG_BUFFER.lock();
             use core::fmt::Write;
 
             if with_prefix {
-                // A ^& kódokat az új ConsoleBase::render_bytes fogja értelmezni
                 let _ = write!(
                     &mut *log,
                     "^&8[{:02}:{:02}:{:02}] ^&7[{}{}^&7] ^&7{}",
@@ -37,14 +38,10 @@ impl Logger {
             if newline {
                 log.push_str("\n");
             }
-        } // Itt felszabadul a LOG_BUFFER lock, így a renderelésnél újra le lehet lockolni
-
-        // 2. LÉPÉS: Automata renderelés a globális konzollal
-        // Nem hozunk létre új SafeConsole-t, hanem a meglévőt használjuk
+        } 
         if unsafe { crate::kernel::console::display_manager::CURRENT_MODE == DisplayMode::SafeConsole } {
             if let Some(mut console_lock) = CONSOLE.try_lock() {
                 if let Some(console) = console_lock.as_mut() {
-                    // Megszerezzük a buffert a kirajzoláshoz
                     let log_data = LOG_BUFFER.lock();
                     console.render_buffer(&log_data);
                 }
@@ -75,7 +72,4 @@ impl Logger {
 
     pub fn custom(&self, level: &str, color_code: &str, msg: &str) { self.log_internal(level, color_code, msg, true, true); }
 
-    // pub fn raw(&self, msg: &str) {
-    //     LOG_BUFFER.lock().push_str(msg);
-    // }
 }

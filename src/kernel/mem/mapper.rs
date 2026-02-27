@@ -1,5 +1,5 @@
 /*
- * DeepX OS Project
+ * DeepX Project
  * Copyright (C) 2024-2026 - Máté Pálmai
  *
  * File: /src/kernel/mem/mapper.rs
@@ -24,10 +24,7 @@ impl MemoryMapper {
         self.mapper.map_to(virt, phys, flags);
     }
 
-    /// Egy egész tartományt leképez (szekvenciális fizikai és virtuális címek)
-    /// Például: 1MB-nyi területet a videómemóriának.
     pub fn map_range(&mut self, start_virt: u64, start_phys: u64, size: u64, flags: PageTableFlags) {
-        // Mindig lapmérethez (4096) igazítunk
         let start = start_virt & !0xfff;
         let end = (start_virt + size + 4095) & !0xfff;
         
