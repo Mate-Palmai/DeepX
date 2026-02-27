@@ -1,10 +1,13 @@
 use crate::kernel::console::ring_buffer::SHELL_LOG_BUFFER;
 use crate::kernel::fs::vfs::{ROOT_NODE, NodeType};
+use crate::kernel::process::SCHEDULER;
 use alloc::format;
 use alloc::vec;
 
 #[allow(unused_imports)]
 
+
+// SYSTEM COMMANDS
 pub fn command_info(args: &[&str]) {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
 
@@ -69,7 +72,6 @@ pub fn command_info(args: &[&str]) {
             ];
 
             for (cmd, desc) in commands {
-                // Balra igazított parancsnév + leírás
                 shell_log.push_str(&format!("^&9{:<10} ^&f- {}\n", cmd, desc));
             }
 
@@ -112,33 +114,21 @@ pub fn command_reboot() {
     crate::arch::cpu::reboot();
 }
 
-// Filesystem commands
-// --- LS: Fájlok listázása a VFS-ből ---
+// FS COMMANDS
 pub fn command_ls() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     let root_node = ROOT_NODE.lock();
     
-    shell_log.push_str("^&7Directory listing for /:\n");
 
     if let Some(root) = root_node.as_ref() {
-        match root.operations.readdir() {
-            Ok(entries) => {
-                for entry in entries {
-                    let type_str = match entry.node_type {
-                        NodeType::Directory => "^&9[DIR ]",
-                        _ => "^&f[FILE]",
-                    };
-                    shell_log.push_str(&format!("  {} {:<16} ^&7{:>8} bytes\n", type_str, entry.name, entry.size));
-                }
-            },
-            Err(_) => shell_log.push_str("^&cError: Could not read VFS root.\n"),
+        if let Ok(entries) = root.operations.readdir() {
+            for entry in entries {
+                shell_log.push_str(&format!("  ^&7/{:<16} ^&7{:>8} bytes\n", entry.name, entry.size));
+            }
         }
-    } else {
-        shell_log.push_str("^&cError: VFS not initialized.\n");
     }
 }
 
-// --- RD: Fájl tartalmának olvasása ---
 pub fn command_rd(args: &[&str]) {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     
@@ -154,7 +144,6 @@ pub fn command_rd(args: &[&str]) {
     if let Some(root) = root_node.as_ref() {
         match root.operations.finddir(filename) {
             Ok(node) => {
-                // Biztonsági korlát: maximum 512KB beolvasása a konzolra
                 let read_limit = 512 * 1024;
                 let size_to_read = core::cmp::min(node.size as usize, read_limit);
                 let mut buffer = vec![0u8; size_to_read];
@@ -175,5 +164,77 @@ pub fn command_rd(args: &[&str]) {
         }
     } else {
         shell_log.push_str("^&cError: VFS not initialized.\n");
+    }
+}
+
+
+// SCHEDULER COMMANDS
+use crate::kernel::process::task::TaskState;
+
+pub fn command_tasks() {
+    let mut task_data = alloc::vec::Vec::new();
+    
+    {
+        let scheduler = SCHEDULER.lock();
+        for task in scheduler.get_tasks() {
+            
+            task_data.push((
+                task.id, 
+                task.state, 
+                task.stack_top, 
+                task.stack_bottom, 
+                task.stack_pointer
+            ));
+        }
+    }
+
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    let separator = crate::kernel::console::commands::command_manager::SEPARATOR;
+
+    shell_log.push_str(separator);
+    shell_log.push_str("^&fID   STATE      STACK SP            USAGE\n");
+    shell_log.push_str("^&8--------------------------------------------\n");
+
+    for (id, state, top, bottom, sp) in task_data {
+        let state_str = match state {
+            crate::kernel::process::task::TaskState::Running => "^&aRunning",
+            crate::kernel::process::task::TaskState::Ready   => "^&eReady  ",
+            crate::kernel::process::task::TaskState::Blocked => "^&cBlocked",
+        };
+
+        let stack_size = top - bottom;
+        let stack_used = top - sp;
+        let usage_percent = if stack_size > 0 { (stack_used * 100) / stack_size } else { 0 };
+
+        let line = format!(
+            " ^&9{:<3} {:<10} ^&70x{:08x}       ^&f{:>3}%\n",
+            id, state_str, (sp & 0xFFFFFFFF) as u32, usage_percent
+        );
+        shell_log.push_str(&line);
+    }
+    
+    shell_log.push_str(separator);
+}
+
+pub fn command_kill(args: &[&str]) {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    
+    let id_str = match args.get(0) {
+        Some(s) => *s,
+        None => {
+            shell_log.push_str("^&cUsage: kill <task_id>\n");
+            return;
+        }
+    };
+
+    if let Ok(id) = id_str.parse::<u64>() {
+        let mut scheduler = SCHEDULER.lock();
+        if scheduler.remove_task(id) {
+            shell_log.push_str(&format!("^&aTask {} terminated successfully.\n", id));
+        } else {
+            shell_log.push_str(&format!("^&cError: Cannot kill task {} (protected or not found).\n", id));
+        }
+    } else {
+        shell_log.push_str("^&cError: Invalid task ID.\n");
     }
 }

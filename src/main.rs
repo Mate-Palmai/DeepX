@@ -120,6 +120,10 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
     crate::kernel::drivers::input::init_input();
     set_phase(BootPhase::VfsInit);
     crate::kernel::fs::vfs::init_vfs(crate::kernel::fs::vfs::RootRamFS::new_node());
+    #[cfg(feature = "dev")]
+    {
+        crate::kernel::fs::vfs::dump_vfs_at_boot();
+    }
 
     // 6. System Services & Scheduling
     set_phase(BootPhase::SystunnelInit);

@@ -19,7 +19,6 @@ pub fn command_help() {
     ];
 
     for (cmd, desc) in commands {
-        // Balra igazított parancsnév + leírás
         shell_log.push_str(&format!("^&9{:<10} ^&f- {}\n", cmd, desc));
     }
     shell_log.push_str(crate::kernel::console::commands::command_manager::SEPARATOR);
@@ -44,26 +43,23 @@ pub fn command_mdump(args: &[&str]) {
         shell_log.push_str(&format!("^&eMemory Dump at: ^&f0x{:X}\n", addr));
         shell_log.push_str(crate::kernel::console::commands::command_manager::SEPARATOR);
 
-        for row in 0..64 { // 32 sor = 512 bájt
+        for row in 0..64 { // 32 line = 512 byte
             let row_addr = addr + (row * 16);
             shell_log.push_str(&format!("^&9{:016X}  ^&f", row_addr));
             
             let mut ascii_part = String::with_capacity(16);
 
-            // Hexadecimális rész
             for col in 0..16 {
                 let val = unsafe { ptr::read_volatile(ptr.add((row * 16 + col) as usize)) };
                 shell_log.push_str(&format!("{:02X} ", val));
 
-                // ASCII rész összeállítása (csak a nyomtatható karakterek)
                 if val >= 32 && val <= 126 {
                     ascii_part.push(val as char);
                 } else {
-                    ascii_part.push('.'); // Nem nyomtatható karakter helyett pont
+                    ascii_part.push('.'); 
                 }
             }
 
-            // ASCII oszlop hozzáadása a végére
             shell_log.push_str(&format!(" ^&8| ^&7{}\n", ascii_part));
         }
         shell_log.push_str(crate::kernel::console::commands::command_manager::SEPARATOR);

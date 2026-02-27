@@ -1,4 +1,5 @@
-# Automatically update limine.conf with the contents of the initrd directory
+#!/bin/bash
+
 CONF_FILE="iso_root/boot/limine.conf"
 INITRD_DIR="iso_root/initrd"
 
@@ -12,13 +13,12 @@ term_backend: text
     vga: on
 EOF
 
-for file in "$INITRD_DIR"/*; do
-    if [ -f "$file" ]; then
-        filename=$(basename "$file")
-        echo "    module_path: boot():/initrd/$filename" >> $CONF_FILE
-        echo "    module_cmdline: $filename" >> $CONF_FILE
-    fi
+find "$INITRD_DIR" -type f | while read -r full_path; do
+    rel_path=${full_path#$INITRD_DIR/}
+    
+    echo "    module_path: boot():/initrd/$rel_path" >> $CONF_FILE
+    
+    echo "    module_cmdline: $rel_path" >> $CONF_FILE
 done
 
-echo "Limine.conf updated with the following files:"
-ls $INITRD_DIR
+echo "Limine.conf updated reursively from $INITRD_DIR"

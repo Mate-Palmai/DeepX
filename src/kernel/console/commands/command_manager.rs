@@ -1,5 +1,5 @@
 // src/kernel/console/commands/command_manager.rs
-use alloc::vec::Vec; // Ez hiányzott!
+use alloc::vec::Vec;
 use super::system;
 use super::utils;
 use crate::kernel::console::ring_buffer::SHELL_LOG_BUFFER;
@@ -9,7 +9,6 @@ pub enum CommandResult {
     ClearScreen,
 }
 
-// public separator string
 pub const SEPARATOR: &str = "^&8-------------------------------------------------\n";
 
 pub fn dispatch(input: &str) -> CommandResult {
@@ -19,9 +18,7 @@ pub fn dispatch(input: &str) -> CommandResult {
     let cmd = parts[0];
     let args = &parts[1..];
 
-    // Végrehajtjuk a parancsot és elmentjük az eredményt
     let result = match cmd {
-        // system commands
         "info" => { system::command_info(args); CommandResult::None }
         "version" => { system::command_version(); CommandResult::None }
 
@@ -32,6 +29,9 @@ pub fn dispatch(input: &str) -> CommandResult {
 
         "ls" => { system::command_ls(); CommandResult::None }
         "rd" => { system::command_rd(args); CommandResult::None }
+
+        "tasks" => { system::command_tasks(); CommandResult::None }
+        "kill" => { system::command_kill(args); CommandResult::None }
 
         "clear" => {
             SHELL_LOG_BUFFER.lock().clear();
@@ -46,8 +46,6 @@ pub fn dispatch(input: &str) -> CommandResult {
         }
     };
 
-    // BIZTONSÁGI RESET: Ha nem töröltük a képernyőt, 
-    // küldünk egy ^&7 kódót, hogy a prompt színe helyreálljon.
     if let CommandResult::None = result {
         SHELL_LOG_BUFFER.lock().push_str("^&f");
     }
