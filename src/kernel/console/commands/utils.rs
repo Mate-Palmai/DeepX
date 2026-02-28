@@ -13,9 +13,19 @@ pub fn command_help() {
 
     let commands = [
         ("help",    "Show this help menu"),
-        ("info",    "Display system information"),
-        ("version", "Show kernel version"),
-        ("clear",   "Clear the console screen"),
+        ("info",    "Display hardware and system information"),
+        ("version", "Show detailed kernel version and build info"),
+        ("reboot",  "Perform a warm reset of the system"),
+        ("clear",   "Clear the console log buffer"),
+
+        ("ls",      "List files in the root directory (boot modules)"),
+        ("rd",      "Read and display the content of a file"),
+
+        ("tasks",   "List all active kernel tasks and their states"),
+        ("kill",    "Terminate a task by its ID (Usage: kill <id>)"),
+
+        ("mdump",   "Hex dump of a memory region (Usage: mdump <addr>)"),
+        ("panic",   "Trigger a manual kernel panic for testing"),
     ];
 
     for (cmd, desc) in commands {
