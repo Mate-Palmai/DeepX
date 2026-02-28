@@ -43,5 +43,5 @@ To build and test the DeepX Kernel, you need **Rust Nightly**, **xorriso**, and 
 ./run.sh
 
 # To synchronize the bootloader configuration (limine.conf) with initrd changes:
-./update_limine.shk
+./update_limine.sh
 ```
