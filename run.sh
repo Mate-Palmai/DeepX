@@ -2,10 +2,10 @@
 set -e
 
 # Configuration
-ISO_NAME="DeepX_OS.iso"
+ISO_NAME="DeepX.iso"
 ISO_ROOT="iso_root"
 USERSPACE_DIR="src/userspace"
-KERNEL_TARGET="x86_64-DeepX-OS"
+KERNEL_TARGET="x86_64-DeepX"
 USERSPACE_TARGET="x86_64-userspace"
 
 # Check for clean flag
@@ -40,9 +40,12 @@ mkdir -p "$ISO_ROOT/boot"
 cp "$KERNEL_BIN" "$ISO_ROOT/boot/kernel.elf"
 
 # Generate bootable ISO using xorriso
-xorriso -as mkisofs -R -J -z \
+xorriso -as mkisofs -R -J \
     -b boot/limine/limine-bios-cd.bin \
     -no-emul-boot -boot-load-size 4 -boot-info-table \
+    --efi-boot boot/limine/limine-uefi-cd.bin \
+    -efi-boot-part --efi-boot-image \
+    --protective-msdos-label \
     "$ISO_ROOT" -o "$ISO_NAME"
 
 # Install Limine BIOS stage
