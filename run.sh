@@ -33,7 +33,7 @@ objcopy -O binary "$USERSPACE_OUT/recovery_console" src/kernel/recovery.bin
 echo "--- 3. Compiling Kernel ---"
 cargo build --release --target "${KERNEL_TARGET}.json"
 
-KERNEL_BIN="target/$KERNEL_TARGET/release/DeepX_OS"
+KERNEL_BIN="target/$KERNEL_TARGET/release/DeepX"
 
 echo "--- 4. ISO Building ---"
 mkdir -p "$ISO_ROOT/boot"
