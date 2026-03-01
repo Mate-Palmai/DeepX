@@ -1,6 +1,6 @@
 # DeepX Kernel
 
-**Current Version:** `v0.1.0-alpha.1`
+**Current Development Branch:** `v0.1.x (Alpha)`
 
 DeepX is a hobbyist microkernel project written in Rust for the x86_64 architecture. This repository contains the core kernel logic, basic hardware abstraction layers, and a minimal userspace interface.
 

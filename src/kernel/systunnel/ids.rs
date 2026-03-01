@@ -1,21 +1,29 @@
 #[repr(u64)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TunnelID {
-    Log = 0,        // rdi: ptr, rsi: len
-    VfsOpen = 1,    // rdi: path_ptr, rsi: path_len
-    VfsRead = 2,    // rdi: handle, rsi: buffer_ptr, rdx: len
-    VfsList = 3,    // rdi: buffer_ptr, rsi: max_len
-    Exit = 60,      // rdi: exit_code
+    Ok = 0,        
+    Exit = 1,      
+    Log = 2,
+    Execute = 9,
+
+    VfsExists = 10,    
+    VfsOpen = 11,
+    VfsRead = 12,
+
     Unknown,
 }
 
 impl From<u64> for TunnelID {
     fn from(id: u64) -> Self {
         match id {
-            0 => TunnelID::Log,
-            1 => TunnelID::VfsOpen,
-            2 => TunnelID::VfsRead,
-            3 => TunnelID::VfsList,
-            60 => TunnelID::Exit,
+            0 => TunnelID::Ok,    
+            1 => TunnelID::Exit,
+            2 => TunnelID::Log,
+            9 => TunnelID::Execute,
+            10 => TunnelID::VfsExists,
+            11 => TunnelID::VfsOpen,
+            12 => TunnelID::VfsRead,    
+            
             _ => TunnelID::Unknown,
         }
     }

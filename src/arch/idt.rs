@@ -133,63 +133,59 @@ extern "C" {
 
 core::arch::global_asm!(r#"
 .global systunnel_entry
-.extern systunnel_dispatch
+.extern dispatch
 
 systunnel_entry:
+    swapgs               
     cli
-    push r15
-    push r14
-    push r13
-    push r12
-    push r11
-    push r10
-    push r9
-    push r8
-    push rbp
-    push rdi
-    push rsi
-    push rdx
-    push rcx
-    push rbx
-    push rax
     
-    mov ax, ds
-    push rax              
+    push rdi; push rsi; push rdx; push rcx
+    push rax;
+    push r8;  push r9;  push r10; push r11
+    push rbx; push rbp; push r12; push r13; push r14; push r15
+
+    mov rdi, rsp        
     
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
+    mov rbp, rsp
+    and rsp, -16        
     
-    mov rdi, rsp
-    call systunnel_dispatch
+    call systunnel_dispatch 
     
-    pop rax               
+    mov rsp, rbp        
     
-    pop rax               
-    pop rbx
-    pop rcx
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rbp
-    pop r8
-    pop r9
-    pop r10
-    pop r11
-    pop r12
-    pop r13
-    pop r14
-    pop r15
+    pop r15; pop r14; pop r13; pop r12
+    pop rbp; pop rbx; pop r11; pop r10
+    pop r9;  pop r8; 
     
+    pop rax              
+    
+    pop rcx; pop rdx; pop rsi; pop rdi
+
+    swapgs              
     iretq
 "#);
 
+
 #[no_mangle]
-extern "C" fn systunnel_dispatch(frame_ptr: u64) {
+extern "C" fn systunnel_dispatch(frame_ptr: u64) -> u64 {
     let frame = unsafe {
         &mut *(frame_ptr as *mut crate::kernel::systunnel::frame::SystunnelFrame)
     };
-    crate::kernel::systunnel::dispatch::dispatch(frame);
+    
+    let requested_id = frame.rax;
+
+    let result = crate::kernel::systunnel::dispatch::dispatch(frame);
+
+    // use alloc::format;
+    // unsafe {
+    //     crate::kernel::console::LOGGER.debug(&format!(
+    //         "SYSTUNNEL: ID {} executed. Result: {}",
+    //         requested_id, result
+    //     ));
+    // }
+    
+    frame.rax = result;
+    result
 }
 
 // ========== SPECIAL HANDLERS ==========

@@ -4,7 +4,7 @@
 use core::panic::PanicInfo;
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let msg = "Welcome to DeepX Recovery Console!";
+    let msg = "Welcome to DeepX installer \nWe couldn't find an operating system on your computer.";
     unsafe {
         core::arch::asm!(
             "int 0x80",

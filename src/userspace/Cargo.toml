@@ -3,7 +3,6 @@ name = "deepx_userspace"
 version = "0.1.0"
 edition = "2021"
 
-# Fontos: Ne legyen itt [workspace]!
 
 [dependencies]
 
@@ -15,10 +14,14 @@ path = "os/os_discovery.rs"
 name = "recovery_console"
 path = "recovery/recovery_console.rs"
 
+[[bin]]
+name = "installer"
+path = "installer/installer.rs"
+
 [profile.release]
 panic = "abort"
 opt-level = "z"
 lto = true
-codegen-units = 1       # Biztosítja a determinisztikus kódgenerálást
-debug = true            # Hagyd meg a debug infót, hogy lássuk a RIP-et a Panic-nál!
+codegen-units = 1       
+debug = true            
 incremental = false

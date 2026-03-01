@@ -1,5 +1,6 @@
 /.me
 /target
 /bin
+/tmp
 *.iso
 *.bin.hash

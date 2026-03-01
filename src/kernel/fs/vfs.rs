@@ -86,9 +86,9 @@ impl VfsOperations for RootRamFS {
 
         if let Some(response) = MODULE_REQUEST.get_response() {
             for module in response.modules() {
-                let name_str = core::str::from_utf8(module.cmdline())
-                    .unwrap_or("unknown")
-                    .to_string();
+                let full_cmdline = core::str::from_utf8(module.cmdline()).unwrap_or("unknown");
+
+                let name_str = full_cmdline.split(' ').next().unwrap_or("unknown").to_string();
 
                 entries.push(VfsNode {
                     name: name_str,
@@ -177,4 +177,15 @@ pub fn dump_vfs_at_boot() {
             }
         }
     }
+}
+
+
+pub fn exists(path: &str) -> bool {
+    let root_lock = ROOT_NODE.lock();
+    if let Some(root) = root_lock.as_ref() {
+        let clean_path = path.strip_prefix('/').unwrap_or(path);
+        
+        return root.operations.finddir(clean_path).is_ok();
+    }
+    false
 }

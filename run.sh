@@ -26,14 +26,14 @@ USERSPACE_OUT="$USERSPACE_DIR/target/$USERSPACE_TARGET/release"
 
 echo "--- 2. Converting to Flat Binaries ---"
 # Extracts raw binary sections for the kernel to embed or load
-objcopy -O binary -j .text -j .rodata -j .data \
-    "$USERSPACE_OUT/os_discovery" src/kernel/os_discovery.bin
+objcopy -O binary -j .text -j .rodata -j .data "$USERSPACE_OUT/os_discovery" src/kernel/os_discovery.bin
 objcopy -O binary "$USERSPACE_OUT/recovery_console" src/kernel/recovery.bin
+objcopy -O binary "$USERSPACE_OUT/installer" iso_root/initrd/programs/installer.bin
 
 echo "--- 3. Compiling Kernel ---"
 cargo build --release --target "${KERNEL_TARGET}.json"
 
-KERNEL_BIN="target/$KERNEL_TARGET/release/DeepX_OS"
+KERNEL_BIN="target/$KERNEL_TARGET/release/DeepX"
 
 echo "--- 4. ISO Building ---"
 mkdir -p "$ISO_ROOT/boot"
