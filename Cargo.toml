@@ -1,6 +1,6 @@
 [package]
-name = "DeepX_OS"
-version = "0.0.1"
+name = "DeepX"
+version = "0.1.1"
 edition = "2021"
 
 [profile.dev]
