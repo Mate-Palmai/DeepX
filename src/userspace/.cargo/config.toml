@@ -10,5 +10,7 @@ rustflags = [
     "-C", "code-model=small",
     "-C", "target-feature=-mmx,-sse,+soft-float", 
     "-C", "link-arg=-Tlinker.ld",
+    "-C", "relocation-model=pic", 
+    "-C", "no-redzone=yes",
     "-Z", "tls-model=local-exec",               
 ]

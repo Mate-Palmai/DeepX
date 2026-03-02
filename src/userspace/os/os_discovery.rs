@@ -25,7 +25,7 @@ fn main_logic() -> ! {
     if vfs_exists(installer_path) {
         systunnel_log("OK: DeepX Installer found! Initializing setup...");
         
-        exit(1);
+        process_execute(installer_path);
     } else {
         systunnel_log("not found");
         systunnel_log("ERROR: No OS or Installer found on this system.");
@@ -51,18 +51,18 @@ fn vfs_exists(path: &str) -> bool {
 
     exists == 1
 }
-// #[inline(never)]
-// fn process_execute(path: &str) {
-//     unsafe {
-//         core::arch::asm!(
-//             "int 0x80",
-//             in("rax") 9,                  // ID 9: Execute
-//             in("rdi") path.as_ptr() as u64,
-//             in("rsi") path.len() as u64,
-//             options(nostack)
-//         );
-//     }
-// }
+#[inline(never)]
+fn process_execute(path: &str) {
+    unsafe {
+        core::arch::asm!(
+            "int 0x80",
+            in("rax") 9,                  // ID 9: Execute
+            in("rdi") path.as_ptr() as u64,
+            in("rsi") path.len() as u64,
+            options(nostack)
+        );
+    }
+}
 
 
 #[inline(never)]

@@ -82,19 +82,64 @@ pub extern "C" fn dispatch(frame: &mut SystunnelFrame) -> u64 {
 
         // ID: 9 - Execute (RDI: path_ptr, RSI: len)
         TunnelID::Execute => {
-            let ptr = frame.rdi;
-            let len = frame.rsi;
+        let ptr = frame.rdi;
+        let len = frame.rsi;
 
-            match Validator::check_buffer(ptr, len) {
-                Ok(_) => {
-                    let s = unsafe { core::slice::from_raw_parts(ptr as *const u8, len as usize) };
-                    if let Ok(path) = core::str::from_utf8(s) {
-                        // TODO: Process loading logic here
-                        99
+        let s = unsafe { core::slice::from_raw_parts(ptr as *const u8, len as usize) };
+            if let Ok(path) = core::str::from_utf8(s) {
+                let root_lock = crate::kernel::fs::vfs::ROOT_NODE.lock();
+                
+                if let Some(root) = root_lock.as_ref() {
+                    let clean_path = path.strip_prefix('/').unwrap_or(path);
+
+                    if let Ok(node) = root.operations.finddir(clean_path) {
+                        // MODULÁRIS CÍMKEZELÉS: 
+                        // A betöltési cím a fájl inode-jától függ (így több folyamat is lehet)
+                        let load_virt_addr = 0x4000000 + (node.inode % 0x1000000); 
+                        let size = node.size as usize;
+                        
+                        // Importok helyett használjuk a teljes elérési utat a biztonság kedvéért
+                        use crate::kernel::mem::paging::{PageTableFlags, VirtAddr, Mapper};
+                        use crate::kernel::mem::pmm;
+
+                        unsafe {
+                            let mut mapper = Mapper::new();
+                            let flags = PageTableFlags::PRESENT 
+                                    | PageTableFlags::WRITABLE 
+                                    | PageTableFlags::USER_ACCESSIBLE;
+
+                            // 1. Programkód leképezése
+                            for offset in (0..size).step_by(4096) {
+                                if let Some(phys_frame) = pmm::alloc_frame() {
+                                    mapper.map_to(VirtAddr(load_virt_addr + offset as u64), phys_frame, flags);
+                                }
+                            }
+
+                            // 2. Programkód másolása
+                            let dest = core::slice::from_raw_parts_mut(load_virt_addr as *mut u8, size);
+                            if node.operations.read(0, dest).is_ok() {
+                                
+                                // 3. DINAMIKUS STACK: Minden folyamatnak saját 16KB stack
+                                // A kód fölé tesszük egy lapnyi kihagyással (Guard page)
+                                let stack_base = load_virt_addr + ((size as u64 + 0xFFF) & !0xFFF) + 0x1000;
+                                let stack_size = 0x4000; // 16 KB
+                                
+                                for offset in (0..stack_size).step_by(4096) {
+                                    if let Some(phys_frame) = pmm::alloc_frame() {
+                                        mapper.map_to(VirtAddr(stack_base + offset), phys_frame, flags);
+                                    }
+                                }
+
+                                // A stack lefelé nő, tehát a tetejére mutatunk
+                                frame.rip = load_virt_addr;
+                                frame.rsp = stack_base + stack_size - 8; 
+
+                                0 // RAX = Success
+                            } else { 500 }
+                        }
                     } else { 404 }
-                },
-                Err(e) => e as u64,
-            }
+                } else { 503 }
+            } else { 400 }
         },
 
         // ID: 10 - VfsExists (RDI: path_ptr, RSI: len -> RAX: 1/0)

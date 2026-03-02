@@ -28,6 +28,22 @@ pub fn kernel_panic(
 
                 console.current_fg = 0xAAAAAA;
                 for &b in message.as_bytes() { console.draw_char(b); console.cursor_x += 8; }
+                console.newline();
+
+
+                console.current_fg = 0xAAAAAA; // Fehér szín a regisztereknek/részleteknek
+                for &detail in _details {
+                    console.newline();
+                    for &b in detail.as_bytes() {
+                        // Kezeljük a sortörést a detail-en belül, ha van (\n)
+                        if b == b'\n' {
+                            console.newline();
+                        } else {
+                            console.draw_char(b);
+                            console.cursor_x += 8;
+                        }
+                    }
+                }
 
                 if let Some(info) = info {
                     if let Some(loc) = info.location() {

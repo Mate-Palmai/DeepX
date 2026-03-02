@@ -222,12 +222,12 @@ extern "x86-interrupt" fn page_fault(stack_frame: InterruptStackFrame, error_cod
 
     let details = [
         "CR2: 0x", u64_to_hex(cr2, &mut b_cr2),
-        " ERR: ",  u64_to_str(error_code, &mut b_err),
-        " CS: ",   u64_to_str(stack_frame.code_segment, &mut b_cs),
+        "\nERR: ",  u64_to_str(error_code, &mut b_err),
+        "\nCS: ",   u64_to_str(stack_frame.code_segment, &mut b_cs),
         "\nRIP: 0x", u64_to_hex(stack_frame.instruction_pointer, &mut b_rip),
-        " RSP: 0x", u64_to_hex(stack_frame.stack_pointer, &mut b_rsp),
+        "\nRSP: 0x", u64_to_hex(stack_frame.stack_pointer, &mut b_rsp),
         "\nRAX: 0x", u64_to_hex(regs.rax, &mut b_rax),
-        " RBX: 0x", u64_to_hex(regs.rbx, &mut b_rbx),
+        "\nRBX: 0x", u64_to_hex(regs.rbx, &mut b_rbx),
     ];
 
     generic_panic_handler("PAGE FAULT (0x0E)", &details);
