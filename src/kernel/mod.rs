@@ -6,3 +6,4 @@ pub mod fs;
 pub mod console;
 pub mod systunnel;
 pub mod process;
+pub mod debug;

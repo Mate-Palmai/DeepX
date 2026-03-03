@@ -6,10 +6,11 @@
  * Description: Task management and context switching logic.
  */
 
+
 use alloc::alloc::handle_alloc_error;
 use alloc::string::{String, ToString}; 
 use alloc::format;                   
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +27,8 @@ pub struct TaskContext {
     rbp: u64, rbx: u64,
     rip: u64, 
 }
+
+pub static ALLOCATED_TASK_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -46,7 +49,6 @@ use core::arch::global_asm;
 global_asm!(r#"
 .global context_switch
 context_switch:
-    # 1. Mentjük a régi task regisztereit a stackre
     push rbx
     push rbp
     push r12
@@ -54,15 +56,10 @@ context_switch:
     push r14
     push r15
 
-    # 2. Elmentjük a jelenlegi stack pointert (RSP) a régi taskba
-    # RDI az első argumentum (old_rsp_ptr)
     mov [rdi], rsp
 
-    # 3. Betöltjük az ÚJ task stack pointerét
-    # RSI a második argumentum (new_rsp)
     mov rsp, rsi
 
-    # 4. Visszatöltjük az új task regisztereit a stackről
     pop r15
     pop r14
     pop r13
@@ -70,7 +67,6 @@ context_switch:
     pop rbp
     pop rbx
 
-    # 5. Visszaugrunk az új task RIP címére (ami a stack tetején van)
     ret
 "#);
 
@@ -92,15 +88,15 @@ impl Task {
     }
 
     pub fn new(id: Option<u64>, entry_point: u64, name: Option<&str>) -> Self {
-        // ID: ha nincs megadva, generálunk egy újat az atomi számlálóból
         let final_id = id.unwrap_or_else(|| NEXT_ID.fetch_add(1, Ordering::SeqCst));
         
-        // NÉV: ha nincs megadva, a memóriacím alapján nevezzük el
         let task_name = name.map(|s| s.to_string())
                             .unwrap_or_else(|| format!("task_0x{:x}", entry_point));
 
         let stack_size = 4096 * 4; // 16 KB stack
         let layout = core::alloc::Layout::from_size_align(stack_size, 16).unwrap();
+
+        ALLOCATED_TASK_MEMORY.fetch_add(stack_size, Ordering::SeqCst);
         
         unsafe {
             let stack_ptr = alloc::alloc::alloc(layout);
@@ -109,14 +105,14 @@ impl Task {
             let stack_top = stack_ptr as u64 + stack_size as u64;
             let mut sp = stack_top;
 
-            // Kontextus felépítése a stacken a context_switch számára
             sp -= 8;
-            *(sp as *mut u64) = entry_point; // RIP visszatérési címnek
+            *(sp as *mut u64) = entry_point;
 
             for _ in 0..6 { // r15, r14, r13, r12, rbp, rbx
                 sp -= 8;
                 *(sp as *mut u64) = 0;
             }
+            
 
             Self {
                 id: final_id,
@@ -130,4 +126,13 @@ impl Task {
     }
 }
 
-
+impl Drop for Task {
+    fn drop(&mut self) {
+        if self.stack_bottom != 0 {
+            let stack_size = 4096 * 4;
+            let layout = core::alloc::Layout::from_size_align(stack_size, 16).unwrap();
+            unsafe { alloc::alloc::dealloc(self.stack_bottom as *mut u8, layout); }
+            ALLOCATED_TASK_MEMORY.fetch_sub(stack_size, Ordering::SeqCst);
+        }
+    }
+}

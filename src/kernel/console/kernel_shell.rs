@@ -165,7 +165,6 @@ pub fn shell_task_entry() {
                         console.current_fg = old_fg;
                     }
 
-                    console.info_panel();
                 }
             }
         }

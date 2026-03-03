@@ -63,7 +63,7 @@ pub fn safe_console_task_entry() {
                         if let Some(log) = crate::kernel::console::ring_buffer::LOG_BUFFER.try_lock() {
                             console.render_buffer(&log);
                         }
-                        console.info_panel();
+
                     }
                 }
         }

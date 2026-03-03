@@ -76,6 +76,8 @@ pub extern "C" fn _start() -> ! {
         }
     }
 
+    // loop { unsafe { core::arch::asm!("hlt"); } }
+
     loop { unsafe { core::arch::asm!("hlt"); } }
 }
 
@@ -194,7 +196,13 @@ fn setup_tasks() {
     
     #[cfg(feature = "dev")]
     sched.add_task(Task::new(Some(2), crate::kernel::console::kernel_shell::shell_task_entry as u64, Some("Kernel Shell")));
+
+    sched.add_task(Task::new(Some(3), crate::kernel::debug::debug_panel::debug_panel_main as u64, Some("DebugPanel")));
+
+
 }
+
+
 
 // --- Error Handling ---
 

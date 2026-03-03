@@ -17,7 +17,8 @@ const PIT_BASE_FREQ: u32 = 1193182;
 static PIT_FREQ: AtomicU32 = AtomicU32::new(0);
 pub fn init(freq: u32) {
     let divisor = (PIT_BASE_FREQ / freq) as u16;
-    PIT_FREQ.store(freq, Ordering::SeqCst);
+    let actual_freq = PIT_BASE_FREQ / divisor as u32;
+    PIT_FREQ.store(actual_freq, Ordering::SeqCst);
 
     unsafe {
         core::arch::asm!("out 0x43, al", in("al") 0x36u8);

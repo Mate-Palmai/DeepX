@@ -10,6 +10,7 @@ use crate::kernel::process::task::Task;
 use spinning_top::Spinlock;
 use alloc::collections::VecDeque;
 use crate::kernel::process::task::TaskState;
+use crate::kernel::process::task::context_switch;
 use alloc::format;
 
 pub mod task;
@@ -65,6 +66,7 @@ impl Scheduler {
         }
         false
     }
+    
 
     pub fn block_task(&mut self, id: u64) -> bool {
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
@@ -81,37 +83,39 @@ impl Scheduler {
         }
         false
     }
+
+    pub fn yield_now() {
+        unsafe {
+            core::arch::asm!("int 0x20");
+        }
+    }
     
 
     pub fn schedule(&mut self) {
-    if self.tasks.len() < 2 { return; }
+        if self.tasks.len() < 2 { return; }
 
-    let old_idx = self.current_task_index;
-    if self.tasks[old_idx].state == TaskState::Running {
-        self.tasks[old_idx].state = TaskState::Ready;
-    }
-
-    let mut next_idx = (old_idx + 1) % self.tasks.len();
-    let mut search_count = 0;
-
-    while self.tasks[next_idx].state == TaskState::Blocked {
-        next_idx = (next_idx + 1) % self.tasks.len();
-        search_count += 1;
+        let old_idx = self.current_task_index;
         
-        if search_count >= self.tasks.len() {
-            return; 
+        let mut next_idx = (old_idx + 1) % self.tasks.len();
+        while self.tasks[next_idx].state == TaskState::Blocked {
+            next_idx = (next_idx + 1) % self.tasks.len();
+            if next_idx == old_idx { return; }
+        }
+
+        if old_idx == next_idx { return; }
+
+        if self.tasks[old_idx].state == TaskState::Running {
+            self.tasks[old_idx].state = TaskState::Ready;
+        }
+        self.tasks[next_idx].state = TaskState::Running;
+        self.current_task_index = next_idx;
+
+        let old_rsp_ptr = &mut self.tasks[old_idx].stack_pointer as *mut u64;
+        let new_rsp = self.tasks[next_idx].stack_pointer;
+
+        unsafe {
+            SCHEDULER.force_unlock();
+            context_switch(old_rsp_ptr, new_rsp);
         }
     }
-
-    self.current_task_index = next_idx;
-    self.tasks[next_idx].state = TaskState::Running;
-
-    let old_rsp_ptr = &mut self.tasks[old_idx].stack_pointer as *mut u64;
-    let new_rsp = self.tasks[next_idx].stack_pointer;
-
-    unsafe {
-        crate::kernel::process::SCHEDULER.force_unlock();
-        crate::kernel::process::task::context_switch(old_rsp_ptr, new_rsp);
-    }
-}
 }
