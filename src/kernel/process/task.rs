@@ -7,6 +7,9 @@
  */
 
 use alloc::alloc::handle_alloc_error;
+use alloc::string::{String, ToString}; 
+use alloc::format;                   
+use core::sync::atomic::{AtomicU64, Ordering};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,8 +27,11 @@ pub struct TaskContext {
     rip: u64, 
 }
 
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+
 pub struct Task {
     pub id: u64,
+    pub name: String,
     pub stack_pointer: u64, 
     pub state: TaskState,
     pub stack_bottom: u64,
@@ -77,6 +83,7 @@ impl Task {
     pub fn new_kernel_task() -> Self {
         Self {
             id: 0,
+            name: "KernelTask".into(),
             stack_pointer: 0, 
             state: TaskState::Running,
             stack_bottom: 0,
@@ -84,29 +91,41 @@ impl Task {
         }
     }
 
-    pub fn new(id: u64, entry_point: u64) -> Self {
-        let stack_size = 4096 * 4;
+    pub fn new(id: Option<u64>, entry_point: u64, name: Option<&str>) -> Self {
+        // ID: ha nincs megadva, generálunk egy újat az atomi számlálóból
+        let final_id = id.unwrap_or_else(|| NEXT_ID.fetch_add(1, Ordering::SeqCst));
+        
+        // NÉV: ha nincs megadva, a memóriacím alapján nevezzük el
+        let task_name = name.map(|s| s.to_string())
+                            .unwrap_or_else(|| format!("task_0x{:x}", entry_point));
+
+        let stack_size = 4096 * 4; // 16 KB stack
         let layout = core::alloc::Layout::from_size_align(stack_size, 16).unwrap();
-        let stack_ptr = unsafe { alloc::alloc::alloc(layout) };
-        if stack_ptr.is_null() { unsafe { handle_alloc_error(layout); } }
+        
+        unsafe {
+            let stack_ptr = alloc::alloc::alloc(layout);
+            if stack_ptr.is_null() { alloc::alloc::handle_alloc_error(layout); }
 
-        let stack_top = stack_ptr as u64 + stack_size as u64;
-        let mut sp = stack_top;
+            let stack_top = stack_ptr as u64 + stack_size as u64;
+            let mut sp = stack_top;
 
-        sp -= 8;
-        unsafe { *(sp as *mut u64) = entry_point; }
-
-        for _ in 0..6 {
+            // Kontextus felépítése a stacken a context_switch számára
             sp -= 8;
-            unsafe { *(sp as *mut u64) = 0; }
-        }
+            *(sp as *mut u64) = entry_point; // RIP visszatérési címnek
 
-        Self {
-            id,
-            stack_pointer: sp,
-            state: TaskState::Ready,
-            stack_bottom: stack_ptr as u64,
-            stack_top,
+            for _ in 0..6 { // r15, r14, r13, r12, rbp, rbx
+                sp -= 8;
+                *(sp as *mut u64) = 0;
+            }
+
+            Self {
+                id: final_id,
+                name: task_name,
+                stack_pointer: sp,
+                state: TaskState::Ready,
+                stack_bottom: stack_ptr as u64,
+                stack_top,
+            }
         }
     }
 }

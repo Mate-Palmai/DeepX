@@ -93,12 +93,9 @@ pub extern "C" fn dispatch(frame: &mut SystunnelFrame) -> u64 {
                     let clean_path = path.strip_prefix('/').unwrap_or(path);
 
                     if let Ok(node) = root.operations.finddir(clean_path) {
-                        // MODULÁRIS CÍMKEZELÉS: 
-                        // A betöltési cím a fájl inode-jától függ (így több folyamat is lehet)
                         let load_virt_addr = 0x4000000 + (node.inode % 0x1000000); 
                         let size = node.size as usize;
                         
-                        // Importok helyett használjuk a teljes elérési utat a biztonság kedvéért
                         use crate::kernel::mem::paging::{PageTableFlags, VirtAddr, Mapper};
                         use crate::kernel::mem::pmm;
 
@@ -108,19 +105,15 @@ pub extern "C" fn dispatch(frame: &mut SystunnelFrame) -> u64 {
                                     | PageTableFlags::WRITABLE 
                                     | PageTableFlags::USER_ACCESSIBLE;
 
-                            // 1. Programkód leképezése
                             for offset in (0..size).step_by(4096) {
                                 if let Some(phys_frame) = pmm::alloc_frame() {
                                     mapper.map_to(VirtAddr(load_virt_addr + offset as u64), phys_frame, flags);
                                 }
                             }
 
-                            // 2. Programkód másolása
                             let dest = core::slice::from_raw_parts_mut(load_virt_addr as *mut u8, size);
                             if node.operations.read(0, dest).is_ok() {
                                 
-                                // 3. DINAMIKUS STACK: Minden folyamatnak saját 16KB stack
-                                // A kód fölé tesszük egy lapnyi kihagyással (Guard page)
                                 let stack_base = load_virt_addr + ((size as u64 + 0xFFF) & !0xFFF) + 0x1000;
                                 let stack_size = 0x4000; // 16 KB
                                 
@@ -130,7 +123,6 @@ pub extern "C" fn dispatch(frame: &mut SystunnelFrame) -> u64 {
                                     }
                                 }
 
-                                // A stack lefelé nő, tehát a tetejére mutatunk
                                 frame.rip = load_virt_addr;
                                 frame.rsp = stack_base + stack_size - 8; 
 

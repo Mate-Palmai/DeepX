@@ -190,10 +190,10 @@ fn setup_tasks() {
     use crate::kernel::process::{task::Task, SCHEDULER};
     let mut sched = SCHEDULER.lock();
     sched.add_task(Task::new_kernel_task()); // Idle task
-    sched.add_task(Task::new(1, crate::kernel::console::safe_console::safe_console_task_entry as u64));
+    sched.add_task(Task::new(Some(1), crate::kernel::console::safe_console::safe_console_task_entry as u64, Some("Safe Console")));
     
     #[cfg(feature = "dev")]
-    sched.add_task(Task::new(2, crate::kernel::console::kernel_shell::shell_task_entry as u64));
+    sched.add_task(Task::new(Some(2), crate::kernel::console::kernel_shell::shell_task_entry as u64, Some("Kernel Shell")));
 }
 
 // --- Error Handling ---

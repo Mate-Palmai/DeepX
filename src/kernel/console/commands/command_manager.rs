@@ -9,7 +9,7 @@ pub enum CommandResult {
     ClearScreen,
 }
 
-pub const SEPARATOR: &str = "^&8-------------------------------------------------\n";
+pub const SEPARATOR: &str = "^&8------------------------------------------------------\n";
 
 pub fn dispatch(input: &str) -> CommandResult {
     let parts: Vec<&str> = input.split_whitespace().collect();
@@ -32,6 +32,8 @@ pub fn dispatch(input: &str) -> CommandResult {
 
         "tasks" => { system::command_tasks(); CommandResult::None }
         "kill" => { system::command_kill(args); CommandResult::None }
+        "block" => { system::command_block(args); CommandResult::None }
+        "resume" => { system::command_resume(args); CommandResult::None }
 
         "panic" => { system::command_panic(); CommandResult::None }
 

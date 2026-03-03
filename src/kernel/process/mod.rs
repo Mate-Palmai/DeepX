@@ -65,21 +65,49 @@ impl Scheduler {
         }
         false
     }
+
+    pub fn block_task(&mut self, id: u64) -> bool {
+        if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
+            task.state = crate::kernel::process::task::TaskState::Blocked;
+            return true;
+        }
+        false
+    }
+
+    pub fn resume_task(&mut self, id: u64) -> bool {
+        if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
+            task.state = crate::kernel::process::task::TaskState::Ready;
+            return true;
+        }
+        false
+    }
     
 
     pub fn schedule(&mut self) {
     if self.tasks.len() < 2 { return; }
 
     let old_idx = self.current_task_index;
-    self.tasks[old_idx].state = TaskState::Ready;
+    if self.tasks[old_idx].state == TaskState::Running {
+        self.tasks[old_idx].state = TaskState::Ready;
+    }
 
-    let new_idx = (old_idx + 1) % self.tasks.len();
-    self.current_task_index = new_idx;
-    
-    self.tasks[new_idx].state = TaskState::Running;
+    let mut next_idx = (old_idx + 1) % self.tasks.len();
+    let mut search_count = 0;
+
+    while self.tasks[next_idx].state == TaskState::Blocked {
+        next_idx = (next_idx + 1) % self.tasks.len();
+        search_count += 1;
+        
+        if search_count >= self.tasks.len() {
+            return; 
+        }
+    }
+
+    self.current_task_index = next_idx;
+    self.tasks[next_idx].state = TaskState::Running;
 
     let old_rsp_ptr = &mut self.tasks[old_idx].stack_pointer as *mut u64;
-    let new_rsp = self.tasks[new_idx].stack_pointer;
+    let new_rsp = self.tasks[next_idx].stack_pointer;
 
     unsafe {
         crate::kernel::process::SCHEDULER.force_unlock();

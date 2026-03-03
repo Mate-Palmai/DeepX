@@ -177,9 +177,9 @@ pub fn command_tasks() {
     {
         let scheduler = SCHEDULER.lock();
         for task in scheduler.get_tasks() {
-            
             task_data.push((
                 task.id, 
+                task.name.clone(), 
                 task.state, 
                 task.stack_top, 
                 task.stack_bottom, 
@@ -192,10 +192,10 @@ pub fn command_tasks() {
     let separator = crate::kernel::console::commands::command_manager::SEPARATOR;
 
     shell_log.push_str(separator);
-    shell_log.push_str("^&fID   STATE      STACK SP            USAGE\n");
-    shell_log.push_str("^&8--------------------------------------------\n");
+    shell_log.push_str("^&fID   NAME             STATE      SP            USAGE\n");
+    shell_log.push_str(separator);
 
-    for (id, state, top, bottom, sp) in task_data {
+    for (id, name, state, top, bottom, sp) in task_data {
         let state_str = match state {
             crate::kernel::process::task::TaskState::Running => "^&aRunning",
             crate::kernel::process::task::TaskState::Ready   => "^&eReady  ",
@@ -207,15 +207,14 @@ pub fn command_tasks() {
         let usage_percent = if stack_size > 0 { (stack_used * 100) / stack_size } else { 0 };
 
         let line = format!(
-            " ^&9{:<3} {:<10} ^&70x{:08x}       ^&f{:>3}%\n",
-            id, state_str, (sp & 0xFFFFFFFF) as u32, usage_percent
+            " ^&9{:<3} ^&f{:<16} {:<10} ^&70x{:08x}       ^&f{:>3}%\n",
+            id, name, state_str, (sp & 0xFFFFFFFF) as u32, usage_percent
         );
         shell_log.push_str(&line);
     }
     
     shell_log.push_str(separator);
 }
-
 pub fn command_kill(args: &[&str]) {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     
@@ -236,6 +235,38 @@ pub fn command_kill(args: &[&str]) {
         }
     } else {
         shell_log.push_str("^&cError: Invalid task ID.\n");
+    }
+}
+
+pub fn command_block(args: &[&str]) {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    if let Some(id_str) = args.get(0) {
+        if let Ok(id) = id_str.parse::<u64>() {
+            if id == 0 {
+                shell_log.push_str("^&cError: Cannot block kernel_main.\n");
+                return;
+            }
+            let mut scheduler = SCHEDULER.lock();
+            if scheduler.block_task(id) {
+                shell_log.push_str(&format!("^&eTask {} is now Blocked.\n", id));
+            } else {
+                shell_log.push_str("^&cError: Task not found.\n");
+            }
+        }
+    }
+}
+
+pub fn command_resume(args: &[&str]) {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    if let Some(id_str) = args.get(0) {
+        if let Ok(id) = id_str.parse::<u64>() {
+            let mut scheduler = SCHEDULER.lock();
+            if scheduler.resume_task(id) {
+                shell_log.push_str(&format!("^&aTask {} is now Ready.\n", id));
+            } else {
+                shell_log.push_str("^&cError: Task not found.\n");
+            }
+        }
     }
 }
 

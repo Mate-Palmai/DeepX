@@ -1,5 +1,3 @@
-// src/exec/dxb.rs
-
 #[repr(C, packed)]
 pub struct DxbHeader {
     pub magic: [u8; 4],
@@ -14,10 +12,8 @@ pub fn load_and_verify_dxb(data: &[u8]) -> Result<u64, &'static str> {
         return Err("File too small for DXB header");
     }
 
-    // Biztonságos castolás a fejlécre
     let header = unsafe { &*(data.as_ptr() as *const DxbHeader) };
 
-    // Ellenőrzés: \x7F D X B
     if header.magic != [0x7F, b'D', b'X', b'B'] {
         return Err("Invalid DXB magic signature");
     }
@@ -26,6 +22,5 @@ pub fn load_and_verify_dxb(data: &[u8]) -> Result<u64, &'static str> {
         return Err("Unsupported DXB version");
     }
 
-    // Visszaadjuk az entry pointot (vagy a kód kezdetét)
     Ok(header.entry_point)
 }
