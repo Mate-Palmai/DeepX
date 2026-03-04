@@ -6,25 +6,34 @@ use core::sync::atomic::Ordering;
 
 use alloc::format;
 
+
 pub fn debug_panel_main() {
     unsafe { core::arch::asm!("sti"); }
 
-    loop {
-        let stats = if let Some(sched) = SCHEDULER.try_lock() {
-            let count = sched.get_task_count();
-            let running_task_name = sched.get_tasks().iter()
-                .find(|t| t.state == crate::kernel::process::task::TaskState::Running)
-                .map(|t| t.name.clone())
-                .unwrap_or_else(|| "Unknown".into());
-            Some((count, running_task_name))
-        } else {
-            None
-        };
+    let mut last_update_tick = 0;
 
-        if let Some((task_count, current_name)) = stats {
-            if let Some(mut console_lock) = CONSOLE.try_lock() {
-                if let Some(console) = console_lock.as_mut() {
-                    render_debug_overlay(console, task_count, &current_name);
+    loop {
+        let current_ticks = unsafe { crate::arch::idt::get_timer_ticks() };
+
+        if current_ticks >= last_update_tick + 10 {
+            last_update_tick = current_ticks;
+
+            let stats = if let Some(sched) = SCHEDULER.try_lock() {
+                let count = sched.get_task_count();
+                let running_task_name = sched.get_tasks().iter()
+                    .find(|t| t.state == crate::kernel::process::task::TaskState::Running)
+                    .map(|t| t.name.clone())
+                    .unwrap_or_else(|| "Unknown".into());
+                Some((count, running_task_name))
+            } else {
+                None
+            };
+
+            if let Some((task_count, current_name)) = stats {
+                if let Some(mut console_lock) = CONSOLE.try_lock() {
+                    if let Some(console) = console_lock.as_mut() {
+                        render_debug_overlay(console, task_count, &current_name);
+                    }
                 }
             }
         }
@@ -64,35 +73,37 @@ fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_na
     // --- UPTIME ---
     next_row(console, 0xAAAAAA);
     draw_label_internal(console, b"UP:   ");
+
+    let (sec, frac_4) = crate::arch::timer::tsc::get_uptime();
     
-    let freq = crate::arch::timer::pit::get_freq() as u64;
-    let safe_freq = if freq == 0 { 1000 } else { freq }; 
-
-    let sec = ticks / safe_freq;
-
-    let remainder = ticks % safe_freq;
-
-    let frac = (remainder * 10000) / safe_freq;
+    let frac = frac_4 / 100;
 
     let base_x = start_x + label_width;
-    let char_w = 8; 
-
+    
     console.cursor_x = base_x;
     draw_number_fixed_internal(console, sec, 4); 
-
-    console.cursor_x = base_x + (4 * char_w); 
-    console.draw_char(b'.');                     
-
-    console.cursor_x = base_x + (5 * char_w);
-    draw_number_fixed_internal(console, frac, 4); 
+    console.cursor_x = base_x + (4 * 8); 
+    console.draw_char(b'.');
+    console.cursor_x = base_x + (5 * 8);
+    draw_number_fixed_internal(console, frac, 2);
 
     // --- LIVE SPINNER ---
     next_row(console, 0xAAAAAA);
     draw_label_internal(console, b"LIVE: ");
     console.cursor_x = start_x + label_width;
+    
     let anim = [b'|', b'/', b'-', b'\\'];
-    let char_to_draw = anim[((ticks / 10) % 4) as usize];
-    for i in 0..5 {
+    
+    let freq = crate::arch::timer::tsc::get_tsc_frequency();
+    let tsc_now = crate::arch::timer::tsc::read_tsc();
+    
+    let char_to_draw = if freq > 0 {
+        anim[((tsc_now / (freq / 8)) % 4) as usize]
+    } else {
+        b'?'
+    };
+
+    for _ in 0..5 {
         console.draw_char(char_to_draw);
         console.cursor_x += 8;
     }

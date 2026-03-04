@@ -54,6 +54,7 @@ impl Logger {
     pub fn ok(&self, msg: &str)    { self.log_internal("  OK  ", "^&2", msg, true, true); }
     pub fn warn(&self, msg: &str)  { self.log_internal(" WARN ", "^&6", msg, true, true); }
     pub fn error(&self, msg: &str) { self.log_internal("FAILED", "^&4", msg, true, true); }
+    pub fn wait(&self, msg: &str)  { self.log_internal(" WAIT ", "^&e", msg, true, true); }
     pub fn debug(&self, msg: &str) { self.log_internal(" DBUG ", "^&5", msg, true, true); }
 
     pub fn tunnel(&self, msg: &str) { self.log_internal("TUNNEL", "^&3", msg, true, true); }
@@ -64,6 +65,7 @@ impl Logger {
     pub fn ok_nl(&self, msg: &str)    { self.log_internal("  OK  ", "^&2", msg, true, false); }
     pub fn warn_nl(&self, msg: &str)  { self.log_internal(" WARN ", "^&6", msg, true, false); }
     pub fn error_nl(&self, msg: &str) { self.log_internal("FAILED", "^&4", msg, true, false); }
+    pub fn wait_nl(&self, msg: &str)  { self.log_internal(" WAIT ", "^&e", msg, true, false); }
     pub fn debug_nl(&self, msg: &str) { self.log_internal(" DBUG ", "^&5", msg, true, false); }
 
     // other logs

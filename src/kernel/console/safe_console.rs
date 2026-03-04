@@ -70,6 +70,7 @@ pub fn safe_console_task_entry() {
 
        
 
-        for _ in 0..50_000 { unsafe { core::arch::asm!("pause"); } }
+        // for _ in 0..50_000 { unsafe { core::arch::asm!("pause"); } }
+        crate::kernel::process::Scheduler::yield_now();
     }
 }

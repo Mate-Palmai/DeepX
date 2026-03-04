@@ -16,12 +16,14 @@ const PIT_BASE_FREQ: u32 = 1193182;
 
 static PIT_FREQ: AtomicU32 = AtomicU32::new(0);
 pub fn init(freq: u32) {
-    let divisor = (PIT_BASE_FREQ / freq) as u16;
-    let actual_freq = PIT_BASE_FREQ / divisor as u32;
+    let divisor = ((PIT_BASE_FREQ + (freq / 2)) / freq) as u16;
+    let actual_freq = PIT_BASE_FREQ / (divisor as u32);
     PIT_FREQ.store(actual_freq, Ordering::SeqCst);
 
     unsafe {
+        // Port 0x43: Mode 3 (Square Wave Generator)
         core::arch::asm!("out 0x43, al", in("al") 0x36u8);
+        // Port 0x40: Divisor LSB és MSB
         core::arch::asm!("out 0x40, al", in("al") (divisor & 0xFF) as u8);
         core::arch::asm!("out 0x40, al", in("al") ((divisor >> 8) & 0xFF) as u8);
     }
@@ -44,7 +46,6 @@ pub fn prepare_sleep(ms: u32) {
 pub fn wait_sleep() {
     unsafe {
         loop {
-            // Read-back command a Channel 0-ra
             core::arch::asm!("out 0x43, al", in("al") 0xE2u8);
             let status: u8;
             core::arch::asm!("in al, 0x40", out("al") status);

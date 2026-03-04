@@ -21,6 +21,7 @@ pub fn dispatch(input: &str) -> CommandResult {
     let result = match cmd {
         "info" => { system::command_info(args); CommandResult::None }
         "version" => { system::command_version(); CommandResult::None }
+        "uptime" | "up" => { system::command_uptime(); CommandResult::None }
 
         "help" => { utils::command_help(); CommandResult::None }
         "mdump" => { utils::command_mdump(args); CommandResult::None }

@@ -22,7 +22,7 @@ use crate::kernel::boot::{set_phase, BootPhase};
 use crate::kernel::mem::paging::{Mapper, VirtAddr, PageTableFlags};
 
 // --- System Information ---
-pub const KERNEL_VERSION: &str = "v0.1.2-dev.1";
+pub const KERNEL_VERSION: &str = "v0.1.3-dev.1";
 pub const KERNEL_NAME: &str = "DeepX Kernel";
 pub const KERNEL_MAJOR_VERSION_NAME: &str = "Proxima Phobos";
 
@@ -109,6 +109,10 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
     init_interrupt_controllers();
     crate::arch::timer::pit::init(100);
     unsafe { crate::arch::timer::lapic::init(); }
+    unsafe { core::arch::asm!("sti"); }
+    for _ in 0..2_000_000 { core::hint::spin_loop(); }
+    crate::arch::timer::tsc::calibrate_tsc();
+
 
     #[cfg(feature = "dev")]
     {

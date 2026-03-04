@@ -23,6 +23,8 @@ pub fn command_info(args: &[&str]) {
         .unwrap_or("Invalid UTF-8")
         .trim();
 
+    let (sec, frac) = crate::arch::timer::tsc::get_uptime();
+
     match subcommand {
         "ver" => {
             // --- VERSION INFO ---
@@ -84,7 +86,8 @@ pub fn command_info(args: &[&str]) {
             shell_log.push_str(&format!("^&9Kernel:  ^&f{}\n", crate::KERNEL_VERSION));
             shell_log.push_str(&format!("^&9OS:      ^&f{}\n", "Unknown/Not installed"));
 
-            shell_log.push_str(&format!("^&9Uptime:  ^&f{}s\n", "Not implemented"));
+            
+            shell_log.push_str(&format!("^&9Uptime:  ^&f{}.{:02}s\n", sec, frac / 100));
 
             if let Some(s) = mem_stats {
                 let total = s.usable + s.kernel + s.boot_reclaim;
@@ -112,6 +115,13 @@ pub fn command_reboot() {
     shell_log.push_str("^&eRebooting system...\n");
     
     crate::arch::cpu::reboot();
+}
+
+pub fn command_uptime() {
+    let mut shell_log = SHELL_LOG_BUFFER.lock();
+    
+    let (sec, frac) = crate::arch::timer::tsc::get_uptime();
+    shell_log.push_str(&format!("^&9Uptime: ^&f{}.{:02} seconds\n", sec, frac / 100));
 }
 
 // FS COMMANDS
