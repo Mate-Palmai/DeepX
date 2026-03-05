@@ -30,7 +30,7 @@ pub struct TaskContext {
 
 pub static ALLOCATED_TASK_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
-static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+pub static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 pub struct Task {
     pub id: u64,
@@ -39,6 +39,7 @@ pub struct Task {
     pub state: TaskState,
     pub stack_bottom: u64,
     pub stack_top: u64,
+    pub sleep_until: u64,
 }
 
 use alloc::vec::Vec;
@@ -84,16 +85,15 @@ impl Task {
             state: TaskState::Running,
             stack_bottom: 0,
             stack_top: 0,
+            sleep_until: 0,
         }
     }
 
-    pub fn new(id: Option<u64>, entry_point: u64, name: Option<&str>) -> Self {
-        let final_id = id.unwrap_or_else(|| NEXT_ID.fetch_add(1, Ordering::SeqCst));
-        
+    pub fn new(id: u64, entry_point: u64, name: Option<&str>) -> Self {
         let task_name = name.map(|s| s.to_string())
                             .unwrap_or_else(|| format!("task_0x{:x}", entry_point));
 
-        let stack_size = 4096 * 4; // 16 KB stack
+        let stack_size = 4096 * 4;
         let layout = core::alloc::Layout::from_size_align(stack_size, 16).unwrap();
 
         ALLOCATED_TASK_MEMORY.fetch_add(stack_size, Ordering::SeqCst);
@@ -108,19 +108,19 @@ impl Task {
             sp -= 8;
             *(sp as *mut u64) = entry_point;
 
-            for _ in 0..6 { // r15, r14, r13, r12, rbp, rbx
+            for _ in 0..6 { 
                 sp -= 8;
                 *(sp as *mut u64) = 0;
             }
             
-
             Self {
-                id: final_id,
+                id,
                 name: task_name,
                 stack_pointer: sp,
                 state: TaskState::Ready,
                 stack_bottom: stack_ptr as u64,
                 stack_top,
+                sleep_until: 0,
             }
         }
     }

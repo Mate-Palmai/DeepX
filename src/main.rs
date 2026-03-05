@@ -26,7 +26,7 @@ pub const KERNEL_VERSION: &str = "v0.1.3-dev.1";
 pub const KERNEL_NAME: &str = "DeepX Kernel";
 pub const KERNEL_MAJOR_VERSION_NAME: &str = "Proxima Phobos";
 
-// Embedded userspace binaries
+// --- Embedded userspace binaries ---
 static OS_DISCOVERY: &[u8] = include_bytes!("kernel/os_discovery.bin");
 static RECOVERY: &[u8] = include_bytes!("kernel/recovery.bin");
 
@@ -195,14 +195,28 @@ fn init_interrupt_controllers() {
 fn setup_tasks() {
     use crate::kernel::process::{task::Task, SCHEDULER};
     let mut sched = SCHEDULER.lock();
-    sched.add_task(Task::new_kernel_task()); // Idle task
-    sched.add_task(Task::new(Some(1), crate::kernel::console::safe_console::safe_console_task_entry as u64, Some("Safe Console")));
+    sched.add_task(Task::new_kernel_task()); // KERNEL task
     
+    
+    // spawn(entry_point, name, id)
+    sched.spawn(
+        crate::kernel::console::safe_console::safe_console_task_entry as u64, 
+        Some("Safe Console"), 
+        Some(1)
+    );
+
     #[cfg(feature = "dev")]
-    sched.add_task(Task::new(Some(2), crate::kernel::console::kernel_shell::shell_task_entry as u64, Some("Kernel Shell")));
+    sched.spawn(
+        crate::kernel::console::kernel_shell::shell_task_entry as u64, 
+        Some("Kernel Shell"), 
+        Some(2)
+    );
 
-    sched.add_task(Task::new(Some(3), crate::kernel::debug::debug_panel::debug_panel_main as u64, Some("DebugPanel")));
-
+    sched.spawn(
+        crate::kernel::debug::debug_panel::debug_panel_main as u64, 
+        Some("DebugPanel"), 
+        None
+    );
 
 }
 
