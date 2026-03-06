@@ -17,7 +17,6 @@ mod arch;
 mod kernel;
 
 use core::panic::PanicInfo;
-use limine::request::{FramebufferRequest, MemoryMapRequest, ModuleRequest};
 use crate::kernel::boot::{set_phase, BootPhase};
 use crate::kernel::mem::paging::{Mapper, VirtAddr, PageTableFlags};
 
@@ -31,6 +30,8 @@ static OS_DISCOVERY: &[u8] = include_bytes!("kernel/os_discovery.bin");
 static RECOVERY: &[u8] = include_bytes!("kernel/recovery.bin");
 
 // --- Limine Bootloader Requests ---
+use limine::request::{FramebufferRequest, MemoryMapRequest, ModuleRequest, RsdpRequest};
+
 #[used]
 #[link_section = ".limine_requests"]
 pub static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(); 
@@ -40,6 +41,9 @@ pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 #[used]
 #[link_section = ".limine_requests"]
 pub static MODULE_REQUEST: ModuleRequest = ModuleRequest::new();
+#[used]
+#[link_section = ".limine_requests"]
+pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
 /// Low-level assembly wrapper to switch the CPU to Ring 3 (User Mode).
 /// Sets up segment selectors and performs an `iretq` to jump to user code.
@@ -104,7 +108,11 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
     kernel::mem::init(&MEMMAP_REQUEST); 
     kernel::mem::print_ok();
 
-    // 4. Interrupt Controllers (APIC/PIC) & Timers
+    // 4. ACPI & Hardware Discovery
+    set_phase(BootPhase::AcpiInit);
+    kernel::acpi::init();
+
+    // 5. Interrupt Controllers (APIC/PIC) & Timers
     set_phase(BootPhase::CpuInit);
     init_interrupt_controllers();
     crate::arch::x86::timer::pit::init(100);
@@ -122,7 +130,7 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
         crate::kernel::console::LOGGER.info("--------------------------");
     }
     
-    // 5. Drivers & Filesystem
+    // 6. Drivers & Filesystem
     crate::kernel::drivers::input::init_input();
     set_phase(BootPhase::VfsInit);
     crate::kernel::fs::vfs::init_vfs(crate::kernel::fs::vfs::RootRamFS::new_node());
@@ -131,12 +139,12 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
         crate::kernel::fs::vfs::dump_vfs_at_boot();
     }
 
-    // 6. System Services & Scheduling
+    // 7. System Services & Scheduling
     set_phase(BootPhase::SystunnelInit);
     crate::kernel::systunnel::init();
     setup_tasks();
 
-    // 7. Ring 3 Transition
+    // 8. Ring 3 Transition
     crate::kernel::console::LOGGER.info("Starting Ring 3 Transition...");
     prepare_and_jump(OS_DISCOVERY, "OS Discovery");
 }
