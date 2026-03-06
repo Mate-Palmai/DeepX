@@ -7,7 +7,7 @@
  */
 
 use core::mem::size_of;
-use crate::arch::tss::TaskStateSegment;
+use crate::arch::x86::tss::TaskStateSegment;
 
 #[repr(C, packed)]
 struct GdtPtr {

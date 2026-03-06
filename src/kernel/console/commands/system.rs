@@ -18,12 +18,12 @@ pub fn command_info(args: &[&str]) {
     use crate::kernel::mem::info::get_memory_stats;
 
     let mem_stats = get_memory_stats(&crate::MEMMAP_REQUEST);
-    let cpu_info = crate::arch::info::get_cpu_info();
+    let cpu_info = crate::arch::x86::info::get_cpu_info();
     let brand_str = core::str::from_utf8(&cpu_info.brand)
         .unwrap_or("Invalid UTF-8")
         .trim();
 
-    let (sec, frac) = crate::arch::timer::tsc::get_uptime();
+    let (sec, frac) = crate::arch::x86::timer::tsc::get_uptime();
 
     match subcommand {
         "ver" => {
@@ -114,13 +114,13 @@ pub fn command_reboot() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     shell_log.push_str("^&eRebooting system...\n");
     
-    crate::arch::cpu::reboot();
+    crate::arch::x86::cpu::reboot();
 }
 
 pub fn command_uptime() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     
-    let (sec, frac) = crate::arch::timer::tsc::get_uptime();
+    let (sec, frac) = crate::arch::x86::timer::tsc::get_uptime();
     shell_log.push_str(&format!("^&9Uptime: ^&f{}.{:02} seconds\n", sec, frac / 100));
 }
 

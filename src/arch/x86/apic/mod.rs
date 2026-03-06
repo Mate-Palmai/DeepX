@@ -2,7 +2,7 @@ pub mod local;
 pub mod io;
 pub mod apic;
 
-use crate::arch::pic::PICS;
+use crate::arch::x86::pic::PICS;
 pub use local::LocalApic;
 pub use io::IoApic;
 pub use self::apic::has_apic;
@@ -41,7 +41,7 @@ pub unsafe fn init() {
     ioapic.set_irq(1, 33);
     ioapic.set_irq(12, 44);
 
-    crate::arch::idt::set_apic_mode(true);
+    crate::arch::x86::idt::set_apic_mode(true);
     
     APIC_ENABLED = true;
 

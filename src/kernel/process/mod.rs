@@ -92,11 +92,11 @@ impl Scheduler {
     }
 
     pub fn sleep(ms: u64) {
-        let freq = crate::arch::timer::tsc::get_tsc_frequency();
+        let freq = crate::arch::x86::timer::tsc::get_tsc_frequency();
         if freq == 0 { return; }
 
         let ticks_to_sleep = (freq * ms) / 1000;
-        let wakeup_at = crate::arch::timer::tsc::read_tsc() + ticks_to_sleep;
+        let wakeup_at = crate::arch::x86::timer::tsc::read_tsc() + ticks_to_sleep;
 
         {
             let mut sched = SCHEDULER.lock();
@@ -112,7 +112,7 @@ impl Scheduler {
     pub fn schedule(&mut self) {
         if self.tasks.len() < 2 { return; }
 
-        let now = crate::arch::timer::tsc::read_tsc();
+        let now = crate::arch::x86::timer::tsc::read_tsc();
 
         for task in self.tasks.iter_mut() {
             if task.state == TaskState::Blocked && task.sleep_until > 0 {

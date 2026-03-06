@@ -6,13 +6,13 @@
  * Description: LAPIC Timer initialization and calibration using PIT.
  */
 
- use alloc::format;
-use crate::arch::apic;
-use crate::arch::timer::pit;
+use alloc::format;
+use crate::arch::x86::apic;
+use crate::arch::x86::timer::pit;
 
 
 pub unsafe fn init() {
-    if !crate::arch::apic::has_apic() {
+    if !crate::arch::x86::apic::has_apic() {
         crate::kernel::console::LOGGER.warn("LAPIC Timer: APIC not found, skipping.");
         return;
     }
@@ -44,7 +44,7 @@ pub unsafe fn init() {
 }
 
 fn print_ok() {
-    use crate::arch::timer::pit::get_freq;
+    use crate::arch::x86::timer::pit::get_freq;
     let freq = get_freq();
 
 

@@ -13,7 +13,7 @@ pub fn debug_panel_main() {
     let mut last_update_tick = 0;
 
     loop {
-        let current_ticks = unsafe { crate::arch::idt::get_timer_ticks() };
+        let current_ticks = unsafe { crate::arch::x86::idt::get_timer_ticks() };
 
         if current_ticks >= last_update_tick + 10 {
             last_update_tick = current_ticks;
@@ -46,7 +46,7 @@ fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_na
     let (old_x, old_y) = (console.cursor_x, console.cursor_y);
     let (old_fg, old_bg) = (console.current_fg, console.current_bg);
     
-    let ticks = unsafe { crate::arch::idt::get_timer_ticks() };
+    let ticks = unsafe { crate::arch::x86::idt::get_timer_ticks() };
     let start_x = (console.fb.width() as u64).saturating_sub(200);
     let mut current_row_y = 10;
     let line_spacing = 16;
@@ -74,7 +74,7 @@ fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_na
     next_row(console, 0xAAAAAA);
     draw_label_internal(console, b"UP:   ");
 
-    let (sec, frac_4) = crate::arch::timer::tsc::get_uptime();
+    let (sec, frac_4) = crate::arch::x86::timer::tsc::get_uptime();
     
     let frac = frac_4 / 100;
 
@@ -94,8 +94,8 @@ fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_na
     
     let anim = [b'|', b'/', b'-', b'\\'];
     
-    let freq = crate::arch::timer::tsc::get_tsc_frequency();
-    let tsc_now = crate::arch::timer::tsc::read_tsc();
+    let freq = crate::arch::x86::timer::tsc::get_tsc_frequency();
+    let tsc_now = crate::arch::x86::timer::tsc::read_tsc();
     
     let char_to_draw = if freq > 0 {
         anim[((tsc_now / (freq / 8)) % 4) as usize]
@@ -120,7 +120,7 @@ fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_na
         console.cursor_x = start_x + label_width;
 
         unsafe {
-            let scancode = crate::arch::idt::LAST_SCANCODE;
+            let scancode = crate::arch::x86::idt::LAST_SCANCODE;
             if scancode != 0 && scancode < 0x80 {
                 draw_label_internal(console, b"0x");
                 let mut hex_buf = [0u8; 2];

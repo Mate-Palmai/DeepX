@@ -85,7 +85,7 @@ fn send_eoi(vector: u8) {
             core::ptr::write_volatile(lapic_eoi_ptr, 0);
         } else {
             
-            crate::arch::pic::PICS.lock().notify_end_of_interrupt(vector);
+            crate::arch::x86::pic::PICS.lock().notify_end_of_interrupt(vector);
         }
     }
 }
@@ -291,7 +291,7 @@ pub extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: Interrupt
             let lapic_eoi_ptr = 0xFEE0_00B0 as *mut u32;
             core::ptr::write_volatile(lapic_eoi_ptr, 0);
         } else {
-            crate::arch::pic::PICS.lock().notify_end_of_interrupt(33);
+            crate::arch::x86::pic::PICS.lock().notify_end_of_interrupt(33);
         }
     }
 }

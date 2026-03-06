@@ -94,10 +94,10 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
 
     // 2. CPU Abstraction (GDT, IDT)
     set_phase(BootPhase::EarlyCpuInit);
-    crate::arch::gdt::init(stack);
-    arch::gdt::print_ok();
-    crate::arch::idt::init();
-    arch::idt::print_ok();
+    crate::arch::x86::gdt::init(stack);
+    crate::arch::x86::gdt::print_ok();
+    crate::arch::x86::idt::init();
+    crate::arch::x86::idt::print_ok();
 
     // 3. Memory Management (PMM, VMM, Heap)
     set_phase(BootPhase::MemoryInit);
@@ -107,11 +107,11 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
     // 4. Interrupt Controllers (APIC/PIC) & Timers
     set_phase(BootPhase::CpuInit);
     init_interrupt_controllers();
-    crate::arch::timer::pit::init(100);
-    unsafe { crate::arch::timer::lapic::init(); }
+    crate::arch::x86::timer::pit::init(100);
+    unsafe { crate::arch::x86::timer::lapic::init(); }
     unsafe { core::arch::asm!("sti"); }
     for _ in 0..2_000_000 { core::hint::spin_loop(); }
-    crate::arch::timer::tsc::calibrate_tsc();
+    crate::arch::x86::timer::tsc::calibrate_tsc();
 
 
     #[cfg(feature = "dev")]
@@ -180,10 +180,10 @@ pub fn prepare_recovery_space_and_jump() -> ! {
 // Initializes the APIC or PIC based on hardware support.
 fn init_interrupt_controllers() {
     unsafe {
-        if arch::apic::has_apic() {
-            arch::apic::init();
+        if arch::x86::apic::has_apic() {
+            arch::x86::apic::init();
         } else {
-            let mut pics = arch::pic::PICS.lock();
+            let mut pics = arch::x86::pic::PICS.lock();
             pics.initialize();
             pics.enable_irq(0); // Timer
             pics.enable_irq(1); // Keyboard
@@ -215,7 +215,7 @@ fn setup_tasks() {
     sched.spawn(
         crate::kernel::debug::debug_panel::debug_panel_main as u64, 
         Some("DebugPanel"), 
-        None
+        Some(3)
     );
 
 }

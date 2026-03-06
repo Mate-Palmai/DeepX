@@ -8,7 +8,7 @@
 
 
 use core::sync::atomic::{AtomicU64, Ordering};
-use crate::arch::idt::get_timer_ticks;
+use crate::arch::x86::idt::get_timer_ticks;
 use alloc::format;
 
 static TSC_TICKS_PER_SEC: AtomicU64 = AtomicU64::new(0);
@@ -47,7 +47,7 @@ pub fn calibrate_tsc() {
     let tsc_end = read_tsc();
     let tsc_elapsed = tsc_end - tsc_start;
 
-    let pit_real_hz = crate::arch::timer::pit::get_freq() as u64;
+    let pit_real_hz = crate::arch::x86::timer::pit::get_freq() as u64;
     
     if pit_real_hz > 0 {
         let ticks_per_sec = (tsc_elapsed * pit_real_hz) / wait_ticks;
