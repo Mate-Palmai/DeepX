@@ -121,7 +121,6 @@ impl Scheduler {
                 let new_id = self.tasks[n_idx].id;
                 let new_rsp = self.tasks[n_idx].stack_pointer;
                 self.cpu_tasks[cpu_id] = new_id;
---
                 let old_rsp_ptr = if let Some(o_idx) = old_idx {
                     &mut self.tasks[o_idx].stack_pointer as *mut u64
                 } else {
