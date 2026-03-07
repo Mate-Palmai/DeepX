@@ -18,6 +18,8 @@ pub static mut PM1A_CNT_BLK: u32 = 0;
 pub static mut PM1B_CNT_BLK: u32 = 0;
 pub static mut SMI_CMD: u32 = 0;
 pub static mut ACPI_ENABLE: u8 = 0;
+pub static mut CPU_COUNT: u32 = 0;
+pub static mut LAPIC_IDS: [u8; 256] = [0; 256];
 
 // RSDT (32 bit)
 pub fn parse_rsdt(rsdt_addr: u64) {
@@ -50,6 +52,30 @@ fn process_table(ptr: u64) {
     
     #[cfg(feature = "dev")]
     crate::kernel::console::LOGGER.info(&format!("ACPI: Found table [{}] at {:#x}", sig, ptr));
+
+    if sig == "APIC" {
+        let madt = unsafe { &*(ptr as *const Madt) };
+        let mut entry_ptr = (ptr + core::mem::size_of::<Madt>() as u64) as *const u8;
+        let end_ptr = ptr + header.length as u64;
+
+        unsafe {
+            while (entry_ptr as u64) < end_ptr {
+                let entry_header = &*(entry_ptr as *const MadtEntryHeader);
+                
+                if entry_header.entry_type == 0 { // Local APIC
+                    let lapic = &*(entry_ptr as *const MadtLocalApic);
+                    if (lapic.flags & 1) != 0 {
+                        LAPIC_IDS[CPU_COUNT as usize] = lapic.apic_id;
+                        CPU_COUNT += 1;
+                    }
+                }
+                
+                entry_ptr = entry_ptr.add(entry_header.length as usize);
+            }
+        }
+        
+        crate::kernel::console::LOGGER.ok(&format!("ACPI: Found {} CPU cores.", unsafe { CPU_COUNT }));
+    }
 
     if sig == "FACP" {
         let fadt = unsafe { &*(ptr as *const Fadt) };
@@ -84,4 +110,26 @@ pub struct Fadt {
     pub pm1b_control_block: u32,
     pub pm2_control_block: u32,
     pub pm_timer_block: u32,
+}
+
+
+#[repr(C, packed)]
+pub struct Madt {
+    pub header: SdtHeader,
+    pub lapic_addr: u32,
+    pub flags: u32,
+}
+
+#[repr(C, packed)]
+pub struct MadtEntryHeader {
+    pub entry_type: u8,
+    pub length: u8,
+}
+
+#[repr(C, packed)]
+pub struct MadtLocalApic {
+    pub header: MadtEntryHeader,
+    pub processor_id: u8,
+    pub apic_id: u8,
+    pub flags: u32, // Bit 0: Enabled
 }

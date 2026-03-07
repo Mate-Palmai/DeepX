@@ -168,7 +168,7 @@ pub fn shell_task_entry() {
                 }
             }
         }
-        // for _ in 0..10_000 { unsafe { core::arch::asm!("pause"); } }
+        
         crate::kernel::process::Scheduler::yield_now();
     }
 }

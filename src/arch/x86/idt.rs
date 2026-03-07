@@ -125,6 +125,23 @@ macro_rules! exception_handler_err {
     };
 }
 
+// ============== AP LOAD ==============
+pub fn load() {
+    unsafe {
+        let idt_ptr = IdtPtr {
+            limit: (size_of::<[IdtEntry; 256]>() - 1) as u16,
+            base: addr_of!(IDT) as u64,
+        };
+        core::arch::asm!("lidt [{}]", in(reg) &idt_ptr);
+    }
+}
+
+pub fn init_ap() {
+    load();
+    // TODO: AP setup here
+}
+
+
 // ========== SYSTUNNEL ENTRY ==========
 
 extern "C" {
@@ -258,7 +275,6 @@ static mut TIMER_TICKS: u64 = 0;
 pub extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     unsafe {
         TIMER_TICKS += 1;
-
         let lapic_eoi_ptr = 0xFEE0_00B0 as *mut u32;
         core::ptr::write_volatile(lapic_eoi_ptr, 0);
 
@@ -326,12 +342,13 @@ pub fn init() {
         IDT[0x80].set_handler(systunnel_entry as u64);
         IDT[0x80].flags = 0xEE; // Present, DPL 3, Interrupt Gate
 
-        let idt_ptr = IdtPtr {
-            limit: (size_of::<[IdtEntry; 256]>() - 1) as u16,
-            base: addr_of!(IDT) as u64,
-        };
+        // let idt_ptr = IdtPtr {
+        //     limit: (size_of::<[IdtEntry; 256]>() - 1) as u16,
+        //     base: addr_of!(IDT) as u64,
+        // };
 
-        core::arch::asm!("lidt [{}]", in(reg) &idt_ptr);
+        // core::arch::asm!("lidt [{}]", in(reg) &idt_ptr);
+        load();
     }
 }
 

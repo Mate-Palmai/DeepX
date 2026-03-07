@@ -6,145 +6,148 @@ use core::sync::atomic::Ordering;
 
 use alloc::format;
 
-
 pub fn debug_panel_main() {
     unsafe { core::arch::asm!("sti"); }
-
     let mut last_update_tick = 0;
 
     loop {
         let current_ticks = unsafe { crate::arch::x86::idt::get_timer_ticks() };
 
-        if current_ticks >= last_update_tick + 10 {
+        if current_ticks >= last_update_tick + 5 { 
             last_update_tick = current_ticks;
 
-            let stats = if let Some(sched) = SCHEDULER.try_lock() {
-                let count = sched.get_task_count();
-                let running_task_name = sched.get_tasks().iter()
-                    .find(|t| t.state == crate::kernel::process::task::TaskState::Running)
-                    .map(|t| t.name.clone())
-                    .unwrap_or_else(|| "Unknown".into());
-                Some((count, running_task_name))
-            } else {
-                None
+            let (count, cpu_stats) = {
+                let sched = SCHEDULER.lock();
+                let c = sched.get_task_count();
+                let stats = sched.get_cpu_tasks(); 
+                (c, stats)
             };
 
-            if let Some((task_count, current_name)) = stats {
-                if let Some(mut console_lock) = CONSOLE.try_lock() {
-                    if let Some(console) = console_lock.as_mut() {
-                        render_debug_overlay(console, task_count, &current_name);
-                    }
+            if let Some(mut console_lock) = CONSOLE.try_lock() {
+                if let Some(console) = console_lock.as_mut() {
+                    render_debug_overlay(console, count, &cpu_stats);
                 }
             }
         }
 
+        core::hint::spin_loop();
         crate::kernel::process::Scheduler::yield_now();
     }
 }
 
-fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, current_name: &str) {
+fn render_debug_overlay(console: &mut ConsoleBase, task_count: usize, cpu_tasks: &[u64; 8]) {
     let (old_x, old_y) = (console.cursor_x, console.cursor_y);
     let (old_fg, old_bg) = (console.current_fg, console.current_bg);
     
-    let ticks = unsafe { crate::arch::x86::idt::get_timer_ticks() };
     let start_x = (console.fb.width() as u64).saturating_sub(200);
     let mut current_row_y = 10;
     let line_spacing = 16;
     let label_width = 48;
 
-    let mut next_row = |c: &mut ConsoleBase, fg: u32| {
-        c.cursor_x = start_x;
-        c.cursor_y = current_row_y;
-        c.current_fg = fg;
-        c.current_bg = 0x000000;
-        current_row_y += line_spacing;
-    };
-
+    
     #[cfg(feature = "dev")]
     {
-    next_row(console, 0xaa0a0a);
-    draw_label_internal(console, b"DEV BUILD - UNSTABLE"); 
+        console.cursor_x = start_x;
+        console.cursor_y = current_row_y;
+        console.current_fg = 0xaa0a0a;
+        draw_label_internal(console, b"DEV BUILD - UNSTABLE"); 
+        current_row_y += line_spacing;
     }
 
     // --- KERNEL VERSION ---
-    next_row(console, 0xFFFFFF);
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
+    console.current_fg = 0xFFFFFF;
     draw_label_internal(console, crate::KERNEL_VERSION.as_bytes());
+    current_row_y += line_spacing;
 
     // --- UPTIME ---
-    next_row(console, 0xAAAAAA);
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
+    console.current_fg = 0xAAAAAA;
     draw_label_internal(console, b"UP:   ");
-
     let (sec, frac_4) = crate::arch::x86::timer::tsc::get_uptime();
-    
-    let frac = frac_4 / 100;
-
-    let base_x = start_x + label_width;
-    
-    console.cursor_x = base_x;
+    console.cursor_x = start_x + label_width;
     draw_number_fixed_internal(console, sec, 4); 
-    console.cursor_x = base_x + (4 * 8); 
     console.draw_char(b'.');
-    console.cursor_x = base_x + (5 * 8);
-    draw_number_fixed_internal(console, frac, 2);
+    console.cursor_x += 8;
+    draw_number_fixed_internal(console, frac_4 / 100, 2);
+    current_row_y += line_spacing;
 
     // --- LIVE SPINNER ---
-    next_row(console, 0xAAAAAA);
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
     draw_label_internal(console, b"LIVE: ");
     console.cursor_x = start_x + label_width;
-    
     let anim = [b'|', b'/', b'-', b'\\'];
-    
-    let freq = crate::arch::x86::timer::tsc::get_tsc_frequency();
     let tsc_now = crate::arch::x86::timer::tsc::read_tsc();
-    
-    let char_to_draw = if freq > 0 {
-        anim[((tsc_now / (freq / 8)) % 4) as usize]
-    } else {
-        b'?'
-    };
-
-    for _ in 0..5 {
-        console.draw_char(char_to_draw);
-        console.cursor_x += 8;
-    }
+    let freq = crate::arch::x86::timer::tsc::get_tsc_frequency();
+    let char_to_draw = if freq > 0 { anim[((tsc_now / (freq / 8)) % 4) as usize] } else { b'?' };
+    for _ in 0..5 { console.draw_char(char_to_draw); console.cursor_x += 8; }
+    current_row_y += line_spacing;
 
     // --- TASK COUNT ---
-    next_row(console, 0xAAAAAA);
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
     draw_label_internal(console, b"TSK:  ");
     console.cursor_x = start_x + label_width;
     draw_number_internal(console, task_count as u64);
+    current_row_y += line_spacing;
 
-    // --- LAST KEY ---
-    next_row(console, 0xAAAAAA);
-        draw_label_internal(console, b"KEY:  ");
-        console.cursor_x = start_x + label_width;
+    // --- CPU CORES & RUNNING TASKS ---
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
+    console.current_fg = 0x00FF00;
+    draw_label_internal(console, b"CPU CORES:");
+    current_row_y += line_spacing;
+    
+    for (cpu_id, &task_id) in cpu_tasks.iter().enumerate() {
+        if cpu_id >= 4 { break; } 
 
-        unsafe {
-            let scancode = crate::arch::x86::idt::LAST_SCANCODE;
-            if scancode != 0 && scancode < 0x80 {
-                draw_label_internal(console, b"0x");
-                let mut hex_buf = [0u8; 2];
-                let hex_chars = b"0123456789ABCDEF";
-                hex_buf[0] = hex_chars[(scancode >> 4) as usize];
-                hex_buf[1] = hex_chars[(scancode & 0x0F) as usize];
-                draw_label_internal(console, &hex_buf);
+        console.cursor_x = start_x + 8;
+        console.cursor_y = current_row_y;
+        console.current_fg = 0xAAAAAA;
 
-                if let Some(c) = crate::kernel::drivers::keyboard::Keyboard::scancode_to_char(scancode) {
-                    draw_label_internal(console, b" ("); 
-                    console.draw_char(c as u8);
-                    console.cursor_x += 8;     
-                    console.draw_char(b')');
-                    console.cursor_x += 8; 
-                } else {
-                    draw_label_internal(console, b" (?)");
-                }
-            } else {
-                draw_label_internal(console, b"None");
-            }
+        draw_label_internal(console, b"CPU ");
+        draw_number_internal(console, cpu_id as u64);
+        draw_label_internal(console, b": ");
+
+        if task_id == u64::MAX {
+            console.current_fg = 0x555555;
+            draw_label_internal(console, b"IDLE");
+        } else {
+            console.current_fg = 0x00FFFF;
+            draw_label_internal(console, b"TASK #");
+            draw_number_internal(console, task_id);
         }
+        
+        current_row_y += line_spacing;
+    }
+    // --- LAST KEY ---
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
+    console.current_fg = 0xAAAAAA;
+    draw_label_internal(console, b"KEY:  ");
+    console.cursor_x = start_x + label_width;
+    unsafe {
+        let scancode = crate::arch::x86::idt::LAST_SCANCODE;
+        if scancode != 0 && scancode < 0x80 {
+            draw_label_internal(console, b"0x");
+            let hex_chars = b"0123456789ABCDEF";
+            console.draw_char(hex_chars[(scancode >> 4) as usize]);
+            console.cursor_x += 8;
+            console.draw_char(hex_chars[(scancode & 0x0F) as usize]);
+            console.cursor_x += 8;
+            if let Some(c) = crate::kernel::drivers::keyboard::Keyboard::scancode_to_char(scancode) {
+                draw_label_internal(console, b" ("); console.draw_char(c as u8); console.cursor_x += 8; draw_label_internal(console, b")");
+            }
+        } else { draw_label_internal(console, b"None"); }
+    }
+    current_row_y += line_spacing;
 
-    // --- MODE (DisplayMode) ---
-    next_row(console, 0xAAAAAA);
+    // --- MODE ---
+    console.cursor_x = start_x;
+    console.cursor_y = current_row_y;
     draw_label_internal(console, b"MODE: ");
     console.cursor_x = start_x + label_width;
     let mode_str = unsafe { crate::kernel::console::display_manager::CURRENT_MODE.as_str() };

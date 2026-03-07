@@ -21,7 +21,7 @@ use crate::kernel::boot::{set_phase, BootPhase};
 use crate::kernel::mem::paging::{Mapper, VirtAddr, PageTableFlags};
 
 // --- System Information ---
-pub const KERNEL_VERSION: &str = "v0.1.4-dev.3";
+pub const KERNEL_VERSION: &str = "v0.1.5-dev.2";
 pub const KERNEL_NAME: &str = "DeepX Kernel";
 pub const KERNEL_MAJOR_VERSION_NAME: &str = "Proxima Phobos";
 
@@ -30,7 +30,7 @@ static OS_DISCOVERY: &[u8] = include_bytes!("kernel/os_discovery.bin");
 static RECOVERY: &[u8] = include_bytes!("kernel/recovery.bin");
 
 // --- Limine Bootloader Requests ---
-use limine::request::{FramebufferRequest, MemoryMapRequest, ModuleRequest, RsdpRequest};
+use limine::request::{FramebufferRequest, MemoryMapRequest, ModuleRequest, RsdpRequest, SmpRequest};
 
 #[used]
 #[link_section = ".limine_requests"]
@@ -44,6 +44,9 @@ pub static MODULE_REQUEST: ModuleRequest = ModuleRequest::new();
 #[used]
 #[link_section = ".limine_requests"]
 pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
+#[used]
+#[link_section = ".limine_requests"]
+pub static SMP_REQUEST: SmpRequest = SmpRequest::new();
 
 /// Low-level assembly wrapper to switch the CPU to Ring 3 (User Mode).
 /// Sets up segment selectors and performs an `iretq` to jump to user code.
@@ -111,6 +114,8 @@ fn init_sequence(fb: &limine::framebuffer::Framebuffer, stack: u64) {
     // 4. ACPI & Hardware Discovery
     set_phase(BootPhase::AcpiInit);
     kernel::acpi::init();
+
+    unsafe { crate::kernel::cpu::init_smp(); }
 
     // 5. Interrupt Controllers (APIC/PIC) & Timers
     set_phase(BootPhase::CpuInit);
@@ -203,10 +208,11 @@ fn init_interrupt_controllers() {
 fn setup_tasks() {
     use crate::kernel::process::{task::Task, SCHEDULER};
     let mut sched = SCHEDULER.lock();
+
+
+
     sched.add_task(Task::new_kernel_task()); // KERNEL task
     
-    
-    // spawn(entry_point, name, id)
     sched.spawn(
         crate::kernel::console::safe_console::safe_console_task_entry as u64, 
         Some("Safe Console"), 
@@ -225,6 +231,9 @@ fn setup_tasks() {
         Some("DebugPanel"), 
         Some(3)
     );
+
+
+    
 
 }
 

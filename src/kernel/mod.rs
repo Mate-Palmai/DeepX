@@ -8,3 +8,5 @@ pub mod systunnel;
 pub mod process;
 pub mod debug;
 pub mod acpi;
+pub mod cpu;
+pub mod sync;

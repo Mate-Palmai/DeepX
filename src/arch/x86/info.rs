@@ -5,6 +5,8 @@
  * File: /src/arch/info.rs
  * Description: CPU information gathering.
  */
+ 
+use crate::kernel::acpi::tables::CPU_COUNT;
 
 #[derive(Debug, Clone)]
 pub struct CpuInfo {
@@ -44,24 +46,20 @@ pub fn get_cpu_info() -> CpuInfo {
         brand[offset+12..offset+16].copy_from_slice(&res.edx.to_le_bytes());
     }
 
-    let mut cores = 1;
-    let mut threads = 1;
+    let threads = unsafe { CPU_COUNT };
 
     let res_1 = unsafe { core::arch::x86_64::__cpuid(1) };
     let logical_cpus = (res_1.ebx >> 16) & 0xFF;
 
+    let mut cores = 1;
     if vendor == "AuthenticAMD" {
         let res_8 = unsafe { core::arch::x86_64::__cpuid(0x80000008) };
         cores = (res_8.ecx & 0xFF) + 1;
-        threads = logical_cpus;
     } else if vendor == "GenuineIntel" {
         let res_4 = unsafe { core::arch::x86_64::__cpuid_count(4, 0) };
         cores = ((res_4.eax >> 26) & 0x3F) + 1;
-        threads = logical_cpus;
-    } else {
-        threads = logical_cpus;
     }
-
+    
     let res_1 = unsafe { core::arch::x86_64::__cpuid(1) };
     let res_ext = unsafe { core::arch::x86_64::__cpuid(0x80000001) };
     

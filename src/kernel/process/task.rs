@@ -1,17 +1,10 @@
 /*
- * DeepX Project
- * Copyright (C) 2024-2026 - Máté Pálmai
- *
- * File: /src/kernel/process/task.rs
- * Description: Task management and context switching logic.
+ * DeepX Project - Task v2
  */
 
-
-use alloc::alloc::handle_alloc_error;
-use alloc::string::{String, ToString}; 
-use alloc::format;                   
+use alloc::string::{String, ToString};
+use alloc::format;
 use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskState {
@@ -20,16 +13,7 @@ pub enum TaskState {
     Blocked,  
 }
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct TaskContext {
-    r15: u64, r14: u64, r13: u64, r12: u64,
-    rbp: u64, rbx: u64,
-    rip: u64, 
-}
-
 pub static ALLOCATED_TASK_MEMORY: AtomicUsize = AtomicUsize::new(0);
-
 pub static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 pub struct Task {
@@ -42,12 +26,11 @@ pub struct Task {
     pub sleep_until: u64,
 }
 
-use alloc::vec::Vec;
-use alloc::vec;
+extern "C" {
+    pub fn context_switch(old_rsp: *mut u64, new_rsp: u64);
+}
 
-use core::arch::global_asm;
-
-global_asm!(r#"
+core::arch::global_asm!(r#"
 .global context_switch
 context_switch:
     push rbx
@@ -56,27 +39,18 @@ context_switch:
     push r13
     push r14
     push r15
-
     mov [rdi], rsp
-
     mov rsp, rsi
-
     pop r15
     pop r14
     pop r13
     pop r12
     pop rbp
     pop rbx
-
     ret
 "#);
 
-extern "C" {
-    pub fn context_switch(old_rsp: *mut u64, new_rsp: u64);
-}
-
 impl Task {
-
     pub fn new_kernel_task() -> Self {
         Self {
             id: 0,
@@ -95,13 +69,10 @@ impl Task {
 
         let stack_size = 4096 * 4;
         let layout = core::alloc::Layout::from_size_align(stack_size, 16).unwrap();
-
         ALLOCATED_TASK_MEMORY.fetch_add(stack_size, Ordering::SeqCst);
         
         unsafe {
             let stack_ptr = alloc::alloc::alloc(layout);
-            if stack_ptr.is_null() { alloc::alloc::handle_alloc_error(layout); }
-
             let stack_top = stack_ptr as u64 + stack_size as u64;
             let mut sp = stack_top;
 

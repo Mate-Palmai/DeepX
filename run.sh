@@ -52,5 +52,5 @@ xorriso -as mkisofs -R -J \
 ./limine_bin bios-install "$ISO_NAME"
 
 echo "--- 5. Launching QEMU ---"
-qemu-system-x86_64 -enable-kvm -cpu host -machine q35 -cdrom "$ISO_NAME" \
+qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -machine q35 -cdrom "$ISO_NAME" \
     -rtc base=localtime -serial stdio -m 2048M -d cpu_reset

@@ -56,6 +56,29 @@ impl CpuInfo {
     }
 }
 
+pub unsafe fn set_gs_base(address: u64) {
+    core::arch::asm!(
+        "wrmsr",
+        in("ecx") 0xC0000101u32,
+        in("eax") (address & 0xffffffff) as u32,
+        in("edx") (address >> 32) as u32,
+    );
+}
+
+#[inline(always)]
+pub fn get_cpu_data() -> &'static mut crate::kernel::cpu::per_cpu::PerCpu {
+    let ptr: u64;
+    unsafe {
+        core::arch::asm!(
+            "mov {}, gs:[0]",
+            out(reg) ptr,
+            options(nostack, preserves_flags, readonly)
+        );
+        &mut *(ptr as *mut crate::kernel::cpu::per_cpu::PerCpu)
+    }
+}
+
+
 #[inline(always)]
 pub unsafe fn outb(port: u16, val: u8) {
     asm!("out dx, al", in("dx") port, in("al") val, options(nomem, nostack, preserves_flags));

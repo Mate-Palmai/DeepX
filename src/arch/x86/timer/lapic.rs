@@ -9,7 +9,9 @@
 use alloc::format;
 use crate::arch::x86::apic;
 use crate::arch::x86::timer::pit;
+use core::ptr::{addr_of, addr_of_mut};
 
+static mut TICKS_PER_10MS: u32 = 0;
 
 pub unsafe fn init() {
     if !crate::arch::x86::apic::has_apic() {
@@ -34,6 +36,8 @@ pub unsafe fn init() {
     let current_count = lapic_ptr.add(0x390 / 4).read_volatile();
     let ticks_in_10ms = 0xFFFFFFFF - current_count;
 
+    core::ptr::write_volatile(addr_of_mut!(TICKS_PER_10MS), ticks_in_10ms);
+
     lapic_ptr.add(0x320 / 4).write_volatile(32 | 0x20000);
     
     lapic_ptr.add(0x3E0 / 4).write_volatile(0x03);
@@ -41,6 +45,19 @@ pub unsafe fn init() {
     lapic_ptr.add(0x380 / 4).write_volatile(ticks_in_10ms);
 
     print_ok();
+}
+
+pub unsafe fn init_ap() {
+    let lapic_ptr = crate::arch::x86::apic::get_lapic_base() as *mut u32;
+    let ticks = core::ptr::read_volatile(addr_of!(TICKS_PER_10MS));
+    
+    if ticks == 0 { 
+        return; 
+    }
+
+    lapic_ptr.add(0x320 / 4).write_volatile(32 | 0x20000); // Vector 32, Periodic
+    lapic_ptr.add(0x3E0 / 4).write_volatile(0x03);        // Divider 16
+    lapic_ptr.add(0x380 / 4).write_volatile(ticks);
 }
 
 fn print_ok() {

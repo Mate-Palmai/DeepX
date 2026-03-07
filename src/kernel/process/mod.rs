@@ -1,77 +1,53 @@
 /*
- * DeepX Project
- * Copyright (C) 2024-2026 - Máté Pálmai
- *
- * File: /src/kernel/process/mod.rs
- * Description: Process and task management module.
+ * DeepX Project - SMP Scheduler v2
  */
 
-use crate::kernel::process::task::Task;
+use crate::kernel::process::task::{Task, TaskState, context_switch};
 use spinning_top::Spinlock;
 use alloc::collections::VecDeque;
-use crate::kernel::process::task::TaskState;
-use crate::kernel::process::task::context_switch;
-use alloc::format;
 use core::sync::atomic::Ordering;
 
 pub mod task;
 
-pub static SCHEDULER_VERSION: &str = "v1";
+pub static SCHEDULER_VERSION: &str = "v2-SMP";
+const MAX_CORES: usize = 8;
 
 pub static SCHEDULER: Spinlock<Scheduler> = Spinlock::new(Scheduler::new());
 
+static mut FALLBACK_RSP_STORAGE: [u64; MAX_CORES] = [0; MAX_CORES];
+
 pub struct Scheduler {
     tasks: VecDeque<Task>,
-    current_task_index: usize,
+    cpu_tasks: [u64; MAX_CORES],
 }
 
 impl Scheduler {
     pub const fn new() -> Self {
         Self {
             tasks: VecDeque::new(),
-            current_task_index: 0,
+            cpu_tasks: [u64::MAX; MAX_CORES],
         }
     }
+
+    pub fn get_tasks(&self) -> &VecDeque<Task> { &self.tasks }
+    pub fn get_task_count(&self) -> usize { self.tasks.len() }
 
     pub fn add_task(&mut self, task: Task) {
         self.tasks.push_back(task);
     }
 
-    pub fn get_tasks(&self) -> &VecDeque<Task> {
-        &self.tasks
-    }
-
-    pub fn get_task_count(&self) -> usize {
-        self.tasks.len()
-    }
-
     pub fn remove_task(&mut self, id: u64) -> bool {
-        if id == 0 || id == 2 {
-            return false;
-        }
-
-        let mut target_idx = None;
-        for (i, t) in self.tasks.iter().enumerate() {
-            if t.id == id {
-                target_idx = Some(i);
-                break;
-            }
-        }
-
-        if let Some(idx) = target_idx {
+        if id == 0 || id == 2 { return false; }
+        if let Some(idx) = self.tasks.iter().position(|t| t.id == id) {
             self.tasks.remove(idx);
-            if idx <= self.current_task_index && self.current_task_index > 0 {
-                self.current_task_index -= 1;
-            }
             return true;
         }
         false
     }
-    
 
     pub fn block_task(&mut self, id: u64) -> bool {
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
-            task.state = crate::kernel::process::task::TaskState::Blocked;
+            task.state = TaskState::Blocked;
             return true;
         }
         false
@@ -79,39 +55,29 @@ impl Scheduler {
 
     pub fn resume_task(&mut self, id: u64) -> bool {
         if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
-            task.state = crate::kernel::process::task::TaskState::Ready;
+            task.state = TaskState::Ready;
             return true;
         }
         false
     }
 
+    pub fn get_cpu_tasks(&self) -> [u64; MAX_CORES] {
+        self.cpu_tasks
+    }
+
+    // --- Scheduling logic ---
     pub fn yield_now() {
-        unsafe {
-            core::arch::asm!("int 0x20");
-        }
+
+
+        unsafe { core::arch::asm!("int 0x20"); }
+
+       
     }
-
-    pub fn sleep(ms: u64) {
-        let freq = crate::arch::x86::timer::tsc::get_tsc_frequency();
-        if freq == 0 { return; }
-
-        let ticks_to_sleep = (freq * ms) / 1000;
-        let wakeup_at = crate::arch::x86::timer::tsc::read_tsc() + ticks_to_sleep;
-
-        {
-            let mut sched = SCHEDULER.lock();
-            let current_idx = sched.current_task_index;
-            sched.tasks[current_idx].sleep_until = wakeup_at;
-            sched.tasks[current_idx].state = TaskState::Blocked;
-        }
-
-        Self::yield_now();
-    }
-    
 
     pub fn schedule(&mut self) {
-        if self.tasks.len() < 2 { return; }
+        if self.tasks.is_empty() { return; }
 
+        let cpu_id = crate::kernel::cpu::get_id() as usize;
         let now = crate::arch::x86::timer::tsc::read_tsc();
 
         for task in self.tasks.iter_mut() {
@@ -123,61 +89,63 @@ impl Scheduler {
             }
         }
 
-        let old_idx = self.current_task_index;
-        
-        let mut next_idx = (old_idx + 1) % self.tasks.len();
+        let current_task_id = self.cpu_tasks[cpu_id];
+        let old_idx = self.tasks.iter().position(|t| t.id == current_task_id);
 
-        let mut found = false;
-        for _ in 0..self.tasks.len() {
-            if self.tasks[next_idx].state == TaskState::Ready {
-                found = true;
+        let start_search = old_idx.map(|i| i + 1).unwrap_or(0);
+        let mut next_idx = None;
+
+        for i in 0..self.tasks.len() {
+            let idx = (start_search + i) % self.tasks.len();
+            let t = &self.tasks[idx];
+            
+            let is_running_elsewhere = self.cpu_tasks.iter().enumerate().any(|(cpu, &id)| {
+                cpu != cpu_id && id == t.id && id != u64::MAX
+            });
+
+            if t.state == TaskState::Ready && !is_running_elsewhere {
+                next_idx = Some(idx);
                 break;
             }
-            next_idx = (next_idx + 1) % self.tasks.len();
         }
 
-        if !found { return; }
-
-        while self.tasks[next_idx].state == TaskState::Blocked {
-            next_idx = (next_idx + 1) % self.tasks.len();
-            if next_idx == old_idx { return; }
-        }
-
-        if old_idx == next_idx { return; }
-
-        if self.tasks[old_idx].state == TaskState::Running {
-            self.tasks[old_idx].state = TaskState::Ready;
-        }
-        self.tasks[next_idx].state = TaskState::Running;
-        self.current_task_index = next_idx;
-
-        let old_rsp_ptr = &mut self.tasks[old_idx].stack_pointer as *mut u64;
-        let new_rsp = self.tasks[next_idx].stack_pointer;
-
-        unsafe {
-            SCHEDULER.force_unlock();
-            context_switch(old_rsp_ptr, new_rsp);
-        }
-    }
-
-    fn generate_unique_id(&self, requested_id: Option<u64>) -> u64 {
-        if let Some(id) = requested_id {
-            let exists = self.tasks.iter().any(|t| t.id == id);
-            if !exists {
-                let current_next = crate::kernel::process::task::NEXT_ID.load(Ordering::SeqCst);
-                if id >= current_next {
-                    crate::kernel::process::task::NEXT_ID.store(id + 1, Ordering::SeqCst);
+        if let Some(n_idx) = next_idx {
+            if Some(n_idx) != old_idx {
+                if let Some(o_idx) = old_idx {
+                    if self.tasks[o_idx].state == TaskState::Running {
+                        self.tasks[o_idx].state = TaskState::Ready;
+                    }
                 }
-                return id;
+
+                self.tasks[n_idx].state = TaskState::Running;
+                let new_id = self.tasks[n_idx].id;
+                let new_rsp = self.tasks[n_idx].stack_pointer;
+                self.cpu_tasks[cpu_id] = new_id;
+--
+                let old_rsp_ptr = if let Some(o_idx) = old_idx {
+                    &mut self.tasks[o_idx].stack_pointer as *mut u64
+                } else {
+                    unsafe { &mut FALLBACK_RSP_STORAGE[cpu_id] as *mut u64 }
+                };
+
+                unsafe {
+                    SCHEDULER.force_unlock(); 
+                    context_switch(old_rsp_ptr, new_rsp);
+                }
             }
         }
-        
-        crate::kernel::process::task::NEXT_ID.fetch_add(1, Ordering::SeqCst)
     }
 
     pub fn spawn(&mut self, entry_point: u64, name: Option<&str>, id: Option<u64>) {
         let final_id = self.generate_unique_id(id);
         let task = Task::new(final_id, entry_point, name);
         self.add_task(task);
+    }
+
+    fn generate_unique_id(&self, requested_id: Option<u64>) -> u64 {
+        if let Some(id) = requested_id {
+            if !self.tasks.iter().any(|t| t.id == id) { return id; }
+        }
+        crate::kernel::process::task::NEXT_ID.fetch_add(1, Ordering::SeqCst)
     }
 }

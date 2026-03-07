@@ -30,12 +30,10 @@ impl SafeConsole {
     pub fn render_buffer(&self) {
         if unsafe { CURRENT_MODE != DisplayMode::SafeConsole } { return; }
 
-        if let Some(mut console_lock) = CONSOLE.try_lock() {
-            if let Some(console) = console_lock.as_mut() {
-                if let Some(log) = LOG_BUFFER.try_lock() {
-                    console.render_buffer(&log);
-                }
-            }
+        let mut console_lock = CONSOLE.lock(); 
+        if let Some(console) = console_lock.as_mut() {
+            let log = LOG_BUFFER.lock();
+            console.render_buffer(&log);
         }
     }
 
@@ -46,31 +44,33 @@ impl SafeConsole {
             }
         }
     }
-}
 
-use crate::kernel::console::display_manager;
+    pub fn render_safely(&self) {
+        if unsafe { CURRENT_MODE != DisplayMode::SafeConsole } { return; }
+
+        let mut console_lock = CONSOLE.lock(); 
+        if let Some(console) = console_lock.as_mut() {
+            let log = LOG_BUFFER.lock();
+            console.render_buffer(&log);
+        }
+    }
+}
 
 pub fn safe_console_task_entry() {
     unsafe { core::arch::asm!("sti"); }
     loop {
         crate::kernel::console::display_manager::process_keyboard_queue();
         
-        let is_safe = unsafe { crate::kernel::console::display_manager::CURRENT_MODE == DisplayMode::SafeConsole };
-        if is_safe {
-            if let Some(mut console_lock) = crate::kernel::console::CONSOLE.try_lock() {
+        if unsafe { CURRENT_MODE == DisplayMode::SafeConsole } {
+            if let Some(mut console_lock) = CONSOLE.try_lock() {
                 if let Some(console) = console_lock.as_mut() {
-                    
-                        if let Some(log) = crate::kernel::console::ring_buffer::LOG_BUFFER.try_lock() {
-                            console.render_buffer(&log);
-                        }
-
+                    if let Some(log) = LOG_BUFFER.try_lock() {
+                        console.render_buffer(&log);
                     }
                 }
+            }
         }
 
-       
-
-        // for _ in 0..50_000 { unsafe { core::arch::asm!("pause"); } }
         crate::kernel::process::Scheduler::yield_now();
     }
 }

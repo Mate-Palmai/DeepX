@@ -26,4 +26,16 @@ impl LocalApic {
     pub fn eoi(&self) {
         unsafe { self.write(0xB0, 0); }
     }
+
+    pub unsafe fn send_init(&self, apic_id: u8) {
+        // INIT IPI: 0x000C4500 (Physical, Assert, Level, INIT)
+        self.write(0x310, (apic_id as u32) << 24); // Destination
+        self.write(0x300, 0x00004500);             // Command
+    }
+
+    pub unsafe fn send_sipi(&self, apic_id: u8, vector: u8) {
+        // Startup IPI: 0x000C4600 + vector (address / 4096)
+        self.write(0x310, (apic_id as u32) << 24);
+        self.write(0x300, 0x00004600 | vector as u32);
+    }
 }
