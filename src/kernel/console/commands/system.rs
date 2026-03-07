@@ -108,15 +108,6 @@ pub fn command_version() {
 }
 
 
-
-
-pub fn command_reboot() {
-    let mut shell_log = SHELL_LOG_BUFFER.lock();
-    shell_log.push_str("^&eRebooting system...\n");
-    
-    crate::arch::x86::cpu::reboot();
-}
-
 pub fn command_uptime() {
     let mut shell_log = SHELL_LOG_BUFFER.lock();
     

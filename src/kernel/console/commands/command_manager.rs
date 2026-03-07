@@ -4,6 +4,8 @@ use super::system;
 use super::utils;
 use crate::kernel::console::ring_buffer::SHELL_LOG_BUFFER;
 
+use crate::kernel::drivers::acpi::power;
+
 pub enum CommandResult {
     None,
     ClearScreen,
@@ -26,7 +28,8 @@ pub fn dispatch(input: &str) -> CommandResult {
         "help" => { utils::command_help(); CommandResult::None }
         "mdump" => { utils::command_mdump(args); CommandResult::None }
 
-        "reboot" => { system::command_reboot(); CommandResult::None }
+        "shutdown" => { power::shutdown();; CommandResult::None }
+        "reboot" => { power::reboot(); CommandResult::None }
 
         "ls" => { system::command_ls(); CommandResult::None }
         "rd" => { system::command_rd(args); CommandResult::None }

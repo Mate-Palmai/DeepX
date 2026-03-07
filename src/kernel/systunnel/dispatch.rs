@@ -33,14 +33,14 @@ pub extern "C" fn dispatch(frame: &mut SystunnelFrame) -> u64 {
         }
     }
     
-    if id == TunnelID::Execute || id == TunnelID::VfsExists {
-        unsafe {
-            crate::kernel::console::LOGGER.debug(&alloc::format!(
-                "IRETQ PREP -> RIP: 0x{:x}, CS: 0x{:x}, RSP: 0x{:x}, SS: 0x{:x}",
-                frame.rip, frame.cs, frame.rsp, frame.ss
-            ));
-        }
-    }
+    // if id == TunnelID::Execute || id == TunnelID::VfsExists {
+    //     unsafe {
+    //         crate::kernel::console::LOGGER.debug(&alloc::format!(
+    //             "IRETQ PREP -> RIP: 0x{:x}, CS: 0x{:x}, RSP: 0x{:x}, SS: 0x{:x}",
+    //             frame.rip, frame.cs, frame.rsp, frame.ss
+    //         ));
+    //     }
+    // }
 
     let result = match id {
         // ID: 0 - Status OK (Ping)

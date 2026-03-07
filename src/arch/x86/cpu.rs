@@ -56,31 +56,6 @@ impl CpuInfo {
     }
 }
 
-
-pub fn reboot() -> ! {
-    unsafe {
-        let mut timeout = 0xFFFF;
-        while timeout > 0 && (inb(0x64) & 0x02) != 0 {
-            timeout -= 1;
-            core::hint::spin_loop();
-        }
-        
-        outb(0x64, 0xFE);
-
-        
-        asm!(
-            "lidt [rax]",
-            "int 3",
-            in("rax") &0u64,
-            options(noreturn)
-        );
-    }
-
-    loop {
-        unsafe { asm!("hlt"); }
-    }
-}
-
 #[inline(always)]
 pub unsafe fn outb(port: u16, val: u8) {
     asm!("out dx, al", in("dx") port, in("al") val, options(nomem, nostack, preserves_flags));
